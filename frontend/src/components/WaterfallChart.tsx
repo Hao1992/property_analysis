@@ -1,4 +1,4 @@
-import type { Adjustment } from '../types/analysis'
+import type { ValuationAdjustment as Adjustment } from '../types/analysis'
 import {
   ComposedChart, Bar, XAxis, YAxis, Tooltip, Cell,
   ResponsiveContainer, ReferenceLine
@@ -9,8 +9,6 @@ interface Props {
   adjustments: Adjustment[]
   fair: number
 }
-
-const fmt = (n: number) => `€${Math.abs(n).toLocaleString('es-ES')}`
 
 export default function WaterfallChart({ base, adjustments, fair }: Props) {
   // Build waterfall series: base + each adjustment + fair value bar
