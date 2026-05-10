@@ -1,0 +1,353 @@
+import asyncio
+import uuid
+
+from fastapi import APIRouter, HTTPException
+
+from models.request import AnalyzeRequest, CompareRequest
+from models.response import (
+    AnalyzeResponse, CompareResponse, CompareAnalysis, CompareNarrative,
+    PropertyData, SafetyData, ValuationData, CompositeScore, DimensionScore,
+    PoiCategory, PoiItem,
+    AirbnbSaturationData, SchoolQualityData, NoiseData,
+    HiddenCostsData, NeighbourhoodTrajectoryData, NarrativeData,
+)
+from services import geocoder, overpass, google_places, catastro, ine, open_data_bcn
+from services import airbnb_saturation, school_quality, noise_ecosystem, neighbourhood_trajectory
+from services import ai_narrative
+from scoring import engine, valuation
+from scoring.hidden_costs import estimate_hidden_costs
+from utils.cache import cached
+
+router = APIRouter()
+
+
+# ─── helpers ────────────────────────────────────────────────────────────────
+
+def _format_poi_categories(enriched: dict) -> list[PoiCategory]:
+    result = []
+    for cat, items in enriched.items():
+        top3  = items[:3]
+        rated = [i for i in top3 if i.get("google_rating") is not None]
+        avg_rating    = round(sum(i["google_rating"] for i in rated) / len(rated), 1) if rated else None
+        total_reviews = sum(i.get("google_reviews") or 0 for i in rated) or None
+        poi_items = [
+            PoiItem(
+                name=p["name"],
+                distance_m=p["distance_m"],
+                category=cat,
+                google_rating=p.get("google_rating"),
+                google_reviews=p.get("google_reviews"),
+                routes=p.get("routes", []),
+            )
+            for p in top3
+        ]
+        result.append(PoiCategory(
+            category=cat,
+            total_count=len(items),
+            top_items=poi_items,
+            avg_rating=avg_rating,
+            total_reviews=total_reviews,
+        ))
+    return result
+
+
+def _generate_negotiation_tips(val: dict, score: dict, prop: dict) -> list[str]:
+    tips = []
+    delta = val.get("vs_listing_pct") or 0
+
+    if delta > 10:
+        tips.append(
+            f"Property is listed {delta:.0f}% above estimated fair value. "
+            f"Open negotiations at fair value (€{val['fair_value']:,.0f})."
+        )
+
+    cert = (prop.get("energy_cert") or "").strip().upper()
+    if cert in ("E", "F", "G"):
+        tips.append(
+            f"Energy cert {cert} will require upgrades under Spain's 2033 efficiency mandate. "
+            "Estimated cost €9,000–€28,000 — use this as a negotiation lever."
+        )
+
+    year = prop.get("year_built")
+    if year and 1960 <= year < 1975:
+        tips.append(
+            "Building dates from the 1960–1975 'desarrollismo' era — highest risk period "
+            "for aluminosis (alumina cement) and asbestos. Request a specialist structural "
+            "survey before signing arras."
+        )
+    elif year and (2026 - year) > 45 and prop.get("ite_status") != "FAVORABLE":
+        tips.append(
+            "Building over 45 years old without a confirmed favourable ITE inspection. "
+            "Request the ITE report before signing arras — use uncertainty as leverage."
+        )
+
+    if delta <= -5:
+        tips.append(
+            "Property appears undervalued vs. neighbourhood comparables. "
+            "Still negotiate on any structural or documentation issues found."
+        )
+
+    return tips or ["Property appears fairly priced. Focus due diligence on ITE report and title search."]
+
+
+@cached(ttl=86400)
+async def _run_full_analysis(
+    address: str,
+    listing_price: float | None,
+    buyer_profile: str,
+    user_answers_json: str | None,    # JSON-serialised UserAnswers for cache key
+) -> dict:
+    """Core analysis pipeline — used by both /analyze and /compare."""
+    from models.user_profile import UserAnswers
+    answers = UserAnswers.model_validate_json(user_answers_json) if user_answers_json else None
+
+    try:
+        geo = await geocoder.geocode(address)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    lat, lng = geo["lat"], geo["lng"]
+    district = open_data_bcn.get_district_from_address(geo["address"])
+
+    # Step 1: Parallel data fetch (all IO-bound tasks)
+    (
+        poi_raw, prop_data, safety_data, census_section,
+        airbnb_data, trajectory_data,
+    ) = await asyncio.gather(
+        overpass.fetch_pois(lat, lng),
+        catastro.get_property_data(lat, lng),
+        open_data_bcn.get_safety_data(lat, lng, district),
+        ine.get_census_section_from_coords(lat, lng),
+        airbnb_saturation.get_airbnb_saturation(lat, lng, district),
+        neighbourhood_trajectory.get_neighbourhood_trajectory(lat, lng, district),
+    )
+
+    # Step 2: Google Places enrichment (sequential — cost control)
+    enriched_poi = await google_places.enrich_with_ratings(poi_raw)
+
+    # Step 3: INE price data
+    median_ppm2 = await ine.get_median_price_ppm2(census_section or "", district)
+
+    # Step 4: Synchronous derivations (no IO)
+    valuation_data    = valuation.estimate_fair_value(median_ppm2, prop_data, listing_price)
+    hidden_costs_data = estimate_hidden_costs(prop_data, listing_price)
+    school_data       = school_quality.get_school_quality(poi_raw, enriched_poi)
+    noise_data        = noise_ecosystem.get_noise_ecosystem(poi_raw, prop_data)
+
+    market_data = {
+        "annual_growth_pct": 4.2,
+        "days_on_market":    55,
+        "vs_fair_value_pct": valuation_data.get("vs_listing_pct", 0),
+        "rental_yield":      0.042,
+        "city_avg_yield":    0.045,
+    }
+
+    score_data = engine.calculate_composite(
+        poi_raw, enriched_poi, safety_data,
+        prop_data, valuation_data, market_data,
+        school_data, noise_data, trajectory_data,
+        hidden_costs_data, airbnb_data,
+        user_answers=answers,
+        legacy_profile=buyer_profile,
+    )
+
+    analysis_flat = {
+        "address":                  geo["display_name"],
+        "lat":                      lat,
+        "lng":                      lng,
+        "property":                 prop_data,
+        "safety":                   safety_data,
+        "airbnb_saturation":        airbnb_data,
+        "school_quality":           school_data,
+        "noise":                    noise_data,
+        "neighbourhood_trajectory": trajectory_data,
+        "valuation":                valuation_data,
+        "hidden_costs":             hidden_costs_data,
+        "score":                    score_data,
+        "enriched_poi":             enriched_poi,
+        "poi_raw":                  poi_raw,
+    }
+
+    narrative_data = ai_narrative.generate_narrative(analysis_flat, buyer_profile)
+
+    return {
+        **analysis_flat,
+        "geo":              geo,
+        "district":         district,
+        "census_section":   census_section,
+        "negotiation_tips": _generate_negotiation_tips(valuation_data, score_data, prop_data),
+        "narrative":        narrative_data,
+        "listing_price":    listing_price,
+    }
+
+
+# ─── endpoints ──────────────────────────────────────────────────────────────
+
+@router.post("/analyze", response_model=AnalyzeResponse)
+async def analyze(req: AnalyzeRequest):
+    user_answers_json = req.user_answers.model_dump_json() if req.user_answers else None
+    data = await _run_full_analysis(
+        req.address, req.listing_price, req.buyer_profile, user_answers_json
+    )
+
+    lat, lng      = data["lat"], data["lng"]
+    prop_data     = data["property"]
+    valuation_data = data["valuation"]
+    safety_data   = data["safety"]
+    airbnb_data   = data["airbnb_saturation"]
+    school_data   = data["school_quality"]
+    noise_data    = data["noise"]
+    trajectory_data = data["neighbourhood_trajectory"]
+    hidden_costs_data = data["hidden_costs"]
+    score_data    = data["score"]
+    narrative_data = data["narrative"]
+    geo           = data["geo"]
+
+    prop_response = PropertyData(
+        address_normalized=prop_data.get("address_normalized") or geo["display_name"],
+        lat=lat, lng=lng,
+        surface_m2=prop_data.get("surface_m2"),
+        year_built=prop_data.get("year_built"),
+        energy_cert=prop_data.get("energy_cert"),
+        orientation=prop_data.get("orientation"),
+        cadastral_value=prop_data.get("cadastral_value"),
+        has_lift=prop_data.get("has_lift"),
+        floor=prop_data.get("floor"),
+        ite_status=prop_data.get("ite_status", "UNKNOWN"),
+        flood_zone=prop_data.get("flood_zone"),
+        open_charges=prop_data.get("open_charges"),
+    )
+
+    enriched_count = sum(
+        min(3, len(pois)) for pois in data["enriched_poi"].values()
+        if any(p.get("google_rating") is not None for p in pois[:3])
+    )
+
+    return AnalyzeResponse(
+        request_id=str(uuid.uuid4()),
+        address=geo["display_name"],
+        lat=lat, lng=lng,
+        property=prop_response,
+        poi_categories=_format_poi_categories(data["enriched_poi"]),
+        safety=SafetyData(**safety_data),
+        airbnb_saturation=AirbnbSaturationData(**airbnb_data),
+        school_quality=SchoolQualityData(**school_data),
+        noise=NoiseData(**noise_data),
+        neighbourhood_trajectory=NeighbourhoodTrajectoryData(**trajectory_data),
+        valuation=ValuationData(
+            base_value=valuation_data["base_value"],
+            fair_value=valuation_data["fair_value"],
+            fair_value_low=valuation_data["fair_value_low"],
+            fair_value_high=valuation_data["fair_value_high"],
+            fair_value_ppm2=valuation_data["fair_value_ppm2"],
+            adjustments=valuation_data["adjustments"],
+            confidence=valuation_data["confidence"],
+            vs_listing_pct=valuation_data.get("vs_listing_pct"),
+            verdict=valuation_data.get("verdict", "unknown"),
+        ),
+        hidden_costs=HiddenCostsData(**hidden_costs_data),
+        score=CompositeScore(
+            composite=score_data["composite"],
+            composite_pre_penalty=score_data["composite_pre_penalty"],
+            grade=score_data["grade"],
+            confidence=score_data["confidence"],
+            penalty_multipliers=score_data["penalty_multipliers"],
+            dimensions=[
+                DimensionScore(
+                    name=d["name"],
+                    score=d["score"],
+                    weight=d["weight"],
+                    sub_scores=d["sub_scores"],
+                    sub_weights=d.get("sub_weights", {}),
+                    coverage=d.get("coverage", 1.0),
+                )
+                for d in score_data["dimensions"]
+            ],
+        ),
+        negotiation_tips=data["negotiation_tips"],
+        narrative=NarrativeData(
+            verdict=narrative_data.get("verdict", ""),
+            summary=narrative_data.get("summary", ""),
+            key_risks=narrative_data.get("key_risks", []),
+            key_positives=narrative_data.get("key_positives", []),
+            negotiation_angle=narrative_data.get("negotiation_angle", ""),
+            generated_by=narrative_data.get("generated_by", "claude-code-subscription"),
+        ),
+        data_sources=[
+            "Nominatim", "Overpass API", "Google Places",
+            "Catastro", "INE", "Open Data BCN",
+            "Inside Airbnb", "BCN Licences API", "Claude Code",
+        ],
+        analysis_cost_usd=round(enriched_count * 0.017, 2),
+    )
+
+
+@router.post("/compare", response_model=CompareResponse)
+async def compare(req: CompareRequest):
+    if len(req.addresses) < 2 or len(req.addresses) > 3:
+        raise HTTPException(status_code=422, detail="Provide 2 or 3 addresses to compare.")
+
+    prices = req.listing_prices or [None] * len(req.addresses)
+    if len(prices) < len(req.addresses):
+        prices += [None] * (len(req.addresses) - len(prices))
+
+    analyses = await asyncio.gather(*[
+        _run_full_analysis(addr, price, req.buyer_profile, None)
+        for addr, price in zip(req.addresses, prices)
+    ])
+
+    labels = [f"Property {chr(65 + i)}" for i in range(len(analyses))]
+
+    compare_analyses = []
+    for i, data in enumerate(analyses):
+        score_data  = data["score"]
+        val_data    = data["valuation"]
+        safe_score  = next(
+            (d["score"] or 0 for d in score_data["dimensions"] if d["name"] == "Safety"), 0
+        )
+        compare_analyses.append(CompareAnalysis(
+            address=labels[i],
+            listing_price=data["listing_price"],
+            composite_score=score_data["composite"],
+            grade=score_data["grade"],
+            fair_value=val_data["fair_value"],
+            vs_listing_pct=val_data.get("vs_listing_pct"),
+            hidden_costs_monthly=data["hidden_costs"]["total_monthly_eur"],
+            airbnb_risk=data["airbnb_saturation"]["risk_label"],
+            school_score=data["school_quality"]["composite_score"],
+            safety_score=safe_score,
+            key_risks=data["narrative"].get("key_risks", []),
+            key_positives=data["narrative"].get("key_positives", []),
+        ))
+
+    comparison_input = {
+        "buyer_profile": req.buyer_profile,
+        "properties": [
+            {
+                "label":                labels[i],
+                "address":              data["address"],
+                "composite_score":      compare_analyses[i].composite_score,
+                "grade":                compare_analyses[i].grade,
+                "vs_listing_pct":       compare_analyses[i].vs_listing_pct,
+                "hidden_costs_monthly": compare_analyses[i].hidden_costs_monthly,
+                "airbnb_risk":          compare_analyses[i].airbnb_risk,
+                "school_score":         compare_analyses[i].school_score,
+                "safety_score":         compare_analyses[i].safety_score,
+                "key_risks":            compare_analyses[i].key_risks,
+                "key_positives":        compare_analyses[i].key_positives,
+            }
+            for i, data in enumerate(analyses)
+        ],
+    }
+
+    narr = ai_narrative.generate_comparison_narrative(comparison_input)
+
+    return CompareResponse(
+        buyer_profile=req.buyer_profile,
+        analyses=compare_analyses,
+        comparison=CompareNarrative(
+            recommendation=narr.get("recommendation", ""),
+            summary=narr.get("summary", ""),
+            winner_by_dimension=narr.get("winner_by_dimension", {}),
+        ),
+    )

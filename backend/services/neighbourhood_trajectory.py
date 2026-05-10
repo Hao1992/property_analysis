@@ -1,0 +1,72 @@
+"""Neighbourhood trajectory: is the area rising, stable, or declining?
+
+Primary signal: Barcelona open data — new business activity licences.
+API: https://opendata-ajuntament.barcelona.cat
+
+Falls back to a static district heuristic when the API is slow or unavailable.
+"""
+from datetime import datetime, timedelta, timezone
+
+import httpx
+
+BCN_LICENCES_API = "https://opendata-ajuntament.barcelona.cat/data/api/action/datastore_search"
+# Dataset: "Llicències d'activitats" (activity licences)
+BCN_LICENCES_RESOURCE = "b16f5b31-e95e-4ab3-bc05-e1f7c89a74f7"
+
+# Static trend per district — used as fallback and to calibrate the live signal
+_DISTRICT_TREND_FALLBACK = {
+    "Ciutat Vella":         {"trend": "stable",   "score": 50, "new_biz": 45},
+    "Eixample":             {"trend": "rising",    "score": 68, "new_biz": 82},
+    "Sants-Montjuïc":       {"trend": "rising",    "score": 62, "new_biz": 60},
+    "Les Corts":            {"trend": "stable",    "score": 55, "new_biz": 35},
+    "Sarrià-Sant Gervasi":  {"trend": "stable",    "score": 58, "new_biz": 40},
+    "Gràcia":               {"trend": "rising",    "score": 70, "new_biz": 75},
+    "Horta-Guinardó":       {"trend": "stable",    "score": 52, "new_biz": 30},
+    "Nou Barris":           {"trend": "stable",    "score": 48, "new_biz": 25},
+    "Sant Andreu":          {"trend": "rising",    "score": 60, "new_biz": 50},
+    "Sant Martí":           {"trend": "rising",    "score": 65, "new_biz": 65},
+}
+
+
+async def get_neighbourhood_trajectory(lat: float, lng: float, district: str) -> dict:
+    fallback = _DISTRICT_TREND_FALLBACK.get(district, {"trend": "stable", "score": 52, "new_biz": 30})
+
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.get(BCN_LICENCES_API, params={
+                "resource_id": BCN_LICENCES_RESOURCE,
+                "q": district,
+                "limit": 500,
+            })
+        records = r.json().get("result", {}).get("records", [])
+    except Exception:
+        records = []
+
+    if records:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=365)
+        new_12m = 0
+        for rec in records:
+            date_str = rec.get("data_alta") or rec.get("Data_Alta") or ""
+            try:
+                parsed = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+                if parsed > cutoff:
+                    new_12m += 1
+            except (ValueError, TypeError):
+                continue
+
+        trend_score = min(100, 40 + new_12m * 1.5)
+        trend = "rising" if trend_score > 63 else "declining" if trend_score < 42 else "stable"
+
+        return {
+            "trend": trend,
+            "new_businesses_12m": new_12m,
+            "renovation_permits_12m": 0,
+            "trend_score": round(trend_score, 1),
+        }
+
+    return {
+        "trend": fallback["trend"],
+        "new_businesses_12m": fallback["new_biz"],
+        "renovation_permits_12m": 0,
+        "trend_score": float(fallback["score"]),
+    }

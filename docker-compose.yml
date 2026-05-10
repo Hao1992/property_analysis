@@ -1,0 +1,12 @@
+version: "3.9"
+# Dev setup: only Redis runs in Docker.
+# Backend and frontend run locally so the `claude` CLI (subscription path) is accessible.
+#
+# Start with:   docker-compose up redis
+# Backend:      cd backend && uvicorn main:app --reload --port 8000
+# Frontend:     cd frontend && npm run dev
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
