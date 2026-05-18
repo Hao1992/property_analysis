@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import type { PoiCategory } from '../types/analysis'
 import SourceBadge from './SourceBadge'
 import TransitMap from './TransitMap'
+import RouteDetail from './RouteDetail'
 
 // Barcelona bus route destinations (key routes)
 const BUS_ROUTE_DESC: Record<string, string> = {
@@ -82,6 +84,8 @@ const CountBadge = ({ count, category }: { count: number; category: string }) =>
 const TRANSIT_CATS = new Set(['metro', 'bus_stop'])
 
 export default function NeighborhoodModule({ categories, lat, lng }: Props) {
+  const [activeRoute, setActiveRoute] = useState<{ ref: string; type: string } | null>(null)
+
   const transit = categories.filter(c => TRANSIT_CATS.has(c.category))
   const amenities = categories.filter(c => !TRANSIT_CATS.has(c.category))
   const metro   = categories.find(c => c.category === 'metro')
@@ -124,12 +128,17 @@ export default function NeighborhoodModule({ categories, lat, lng }: Props) {
                           <div className="space-y-0.5 mt-1">
                             {item.routes.slice(0, 8).map(r => {
                               const desc = cat.category === 'bus_stop' ? BUS_ROUTE_DESC[r] : null
+                              const routeType = cat.category === 'metro' ? 'subway' : 'bus'
                               return (
                                 <div key={r} className="flex items-center gap-1.5">
-                                  <span className={`text-xs px-1.5 py-0.5 rounded font-mono font-bold text-white shrink-0
-                                    ${cat.category === 'metro' ? 'bg-red-600' : 'bg-blue-600'}`}>
+                                  <button
+                                    onClick={() => setActiveRoute({ ref: r, type: routeType })}
+                                    className={`text-xs px-1.5 py-0.5 rounded font-mono font-bold text-white shrink-0 hover:opacity-80 transition-opacity
+                                      ${cat.category === 'metro' ? 'bg-red-600' : 'bg-blue-600'}`}
+                                    title={`View all stops on route ${r}`}
+                                  >
                                     {r}
-                                  </span>
+                                  </button>
                                   {desc && <span className="text-xs text-gray-500 truncate">{desc}</span>}
                                 </div>
                               )
@@ -211,6 +220,15 @@ export default function NeighborhoodModule({ categories, lat, lng }: Props) {
       </div>  {/* end amenities */}
 
       <SourceBadge sources={[{ label: 'OpenStreetMap via Overpass API', url: 'https://overpass-turbo.eu/', note: 'POI locations within 500m' }]} />
+
+      {/* Route detail modal */}
+      {activeRoute && (
+        <RouteDetail
+          routeRef={activeRoute.ref}
+          routeType={activeRoute.type}
+          onClose={() => setActiveRoute(null)}
+        />
+      )}
     </div>
   )
 }

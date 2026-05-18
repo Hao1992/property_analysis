@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.routes.health import router as health_router
 from api.routes.analyze import router as analyze_router
+from api.routes.transit import router as transit_router
 
 app = FastAPI(
     title="Property Analyzer API",
@@ -31,6 +32,7 @@ app.add_middleware(
 
 app.include_router(health_router)
 app.include_router(analyze_router)
+app.include_router(transit_router)
 
 
 if __name__ == "__main__":
