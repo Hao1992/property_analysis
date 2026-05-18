@@ -66,12 +66,22 @@ class AirbnbSaturationData(BaseModel):
     data_source: str = "Inside Airbnb"
 
 
+class SchoolEntry(BaseModel):
+    name: str
+    distance_m: float
+    school_type: str                           # public | concertada | private
+    language: str                              # catalan | spanish | english
+    google_rating: Optional[float] = None
+    composite_score: float
+
+
 class SchoolQualityData(BaseModel):
     nearest_school_m: Optional[float] = None
     school_type: Optional[str] = None          # public | concertada | private
     language: Optional[str] = None             # catalan | spanish | english | mixed
     google_rating: Optional[float] = None
     composite_score: float                     # 0–100
+    schools: list[SchoolEntry] = []            # all scored nearby schools
 
 
 class NoiseData(BaseModel):

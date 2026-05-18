@@ -66,12 +66,22 @@ export interface AirbnbSaturationData {
   data_source: string;
 }
 
+export interface SchoolEntry {
+  name: string;
+  distance_m: number;
+  school_type: 'public' | 'concertada' | 'private';
+  language: string;
+  google_rating?: number;
+  composite_score: number;
+}
+
 export interface SchoolQualityData {
   nearest_school_m?: number;
   school_type?: string;
   language?: string;
   google_rating?: number;
   composite_score: number;
+  schools: SchoolEntry[];
 }
 
 export interface NoiseData {
@@ -179,6 +189,9 @@ export interface AnalyzeRequest {
   user_answers?: UserAnswers;
   year_built?: number;
   floor?: number;
+  surface_m2?: number;
+  energy_cert?: string;
+  condition?: 'renovated' | 'good' | 'needs_work';
 }
 
 export interface CompareAnalysis {

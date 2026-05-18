@@ -24,6 +24,10 @@ export default function AddressInput({ onSubmit, loading }: Props) {
   const [profile, setProfile] = useState<AnalyzeRequest['buyer_profile']>('balanced')
   const [yearBuilt, setYearBuilt] = useState('')
   const [floor, setFloor] = useState('')
+  const [surfaceM2, setSurfaceM2] = useState('')
+  const [energyCert, setEnergyCert] = useState('')
+  const [condition, setCondition] = useState<AnalyzeRequest['condition'] | ''>('')
+  const [showPropDetails, setShowPropDetails] = useState(false)
   const [userAnswers, setUserAnswers] = useState<UserAnswers>({})
 
   useEffect(() => {
@@ -52,17 +56,21 @@ export default function AddressInput({ onSubmit, loading }: Props) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!address.trim()) return
-    const parsedPrice = listingPrice ? parseFloat(listingPrice.replace(/[.,\s]/g, '').replace(',', '.')) : NaN
-    const parsedYear  = yearBuilt ? parseInt(yearBuilt, 10) : NaN
-    const parsedFloor = floor !== '' ? parseInt(floor, 10) : NaN
-    const hasAnswers  = Object.values(userAnswers).some(v => v !== undefined)
+    const parsedPrice   = listingPrice ? parseFloat(listingPrice.replace(/[.,\s]/g, '').replace(',', '.')) : NaN
+    const parsedYear    = yearBuilt ? parseInt(yearBuilt, 10) : NaN
+    const parsedFloor   = floor !== '' ? parseInt(floor, 10) : NaN
+    const parsedSurface = surfaceM2 ? parseFloat(surfaceM2) : NaN
+    const hasAnswers    = Object.values(userAnswers).some(v => v !== undefined)
     onSubmit({
       address: address.trim(),
       listing_price: !isNaN(parsedPrice) && parsedPrice > 0 ? parsedPrice : undefined,
       buyer_profile: profile,
       user_answers: hasAnswers ? userAnswers : undefined,
-      year_built: !isNaN(parsedYear) && parsedYear > 1800 && parsedYear <= new Date().getFullYear() ? parsedYear : undefined,
-      floor: !isNaN(parsedFloor) && parsedFloor >= 0 ? parsedFloor : undefined,
+      year_built:  !isNaN(parsedYear)    && parsedYear > 1800  ? parsedYear    : undefined,
+      floor:       !isNaN(parsedFloor)   && parsedFloor >= 0   ? parsedFloor   : undefined,
+      surface_m2:  !isNaN(parsedSurface) && parsedSurface > 0  ? parsedSurface : undefined,
+      energy_cert: energyCert || undefined,
+      condition:   (condition as AnalyzeRequest['condition']) || undefined,
     })
   }
 
@@ -154,6 +162,69 @@ export default function AddressInput({ onSubmit, loading }: Props) {
             ))}
           </select>
         </div>
+      </div>
+
+      {/* Property details — collapsible */}
+      <div className="space-y-3">
+        <button
+          type="button"
+          onClick={() => setShowPropDetails(o => !o)}
+          className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200 transition-colors"
+        >
+          <span className={`transition-transform ${showPropDetails ? 'rotate-90' : ''}`}>▶</span>
+          <span>
+            Property details{' '}
+            <span className="text-xs text-slate-500">— surface area, energy cert, condition — improves valuation accuracy</span>
+          </span>
+        </button>
+
+        {showPropDetails && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-slate-800/60 border border-slate-700 rounded-xl p-4">
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1">
+                Surface area (m²)
+              </label>
+              <input
+                type="number"
+                value={surfaceM2}
+                onChange={e => setSurfaceM2(e.target.value)}
+                placeholder="e.g. 85"
+                min={20} max={1000}
+                className="w-full px-3 py-2.5 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1">
+                Energy certificate
+              </label>
+              <select
+                value={energyCert}
+                onChange={e => setEnergyCert(e.target.value)}
+                className="w-full px-3 py-2.5 bg-slate-700 border border-slate-600 rounded-xl text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+              >
+                <option value="">Unknown</option>
+                {['A','B','C','D','E','F','G'].map(c => (
+                  <option key={c} value={c}>{c} {c === 'A' ? '(best)' : c === 'G' ? '(worst)' : ''}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1">
+                Condition
+              </label>
+              <select
+                value={condition}
+                onChange={e => setCondition(e.target.value as AnalyzeRequest['condition'] | '')}
+                className="w-full px-3 py-2.5 bg-slate-700 border border-slate-600 rounded-xl text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+              >
+                <option value="">Unknown</option>
+                <option value="renovated">Fully renovated</option>
+                <option value="good">Good condition</option>
+                <option value="needs_work">Needs renovation</option>
+              </select>
+            </div>
+          </div>
+        )}
       </div>
 
       <BuyerQuestionnaire value={userAnswers} onChange={setUserAnswers} />

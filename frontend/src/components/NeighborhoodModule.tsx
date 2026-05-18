@@ -2,6 +2,21 @@ import type { PoiCategory } from '../types/analysis'
 import SourceBadge from './SourceBadge'
 import TransitMap from './TransitMap'
 
+// Barcelona bus route destinations (key routes)
+const BUS_ROUTE_DESC: Record<string, string> = {
+  V13: "Av.Tibidabo ↔ Barceloneta", V15: "Kennedy ↔ Catalunya",
+  V17: "Av.Tibidabo ↔ Poblenou",    V19: "Av.Tibidabo ↔ Verneda",
+  V23: "Sarrià ↔ Glòries",
+  H4:  "Montbau ↔ Fòrum",           H6:  "Tibidabo ↔ Fòrum",
+  N0:  "Catalunya ↔ Cornellà (night)", N5: "Catalunya ↔ Tibidabo (night)",
+  N8:  "Catalunya ↔ Gavà (night)",   N24: "Catalunya ↔ Tibidabo (night)",
+  "101": "Sarrià ↔ Eixample",       "123": "Catalunya ↔ Sarrià",
+  "124": "Kennedy ↔ Castellbisbal", "125": "Catalunya ↔ Vallvidrera",
+  "131": "Tibidabo ↔ Gràcia",       "196": "Sarrià ↔ Pg.Gràcia",
+  "60": "Sarrià ↔ Eixample",        "64": "Sarrià ↔ Catalunya",
+  "75": "Kennedy ↔ Besòs",          "76": "Gràcia ↔ Tibidabo",
+}
+
 interface Props { categories: PoiCategory[]; lat: number; lng: number }
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -106,15 +121,21 @@ export default function NeighborhoodModule({ categories, lat, lng }: Props) {
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-medium text-gray-800 truncate">{item.name}</p>
                         {item.routes && item.routes.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {item.routes.slice(0, 10).map(r => (
-                              <span key={r} className={`text-xs px-1.5 py-0.5 rounded font-mono font-bold text-white
-                                ${cat.category === 'metro' ? 'bg-red-600' : 'bg-blue-600'}`}>
-                                {r}
-                              </span>
-                            ))}
-                            {item.routes.length > 10 && (
-                              <span className="text-xs text-gray-400">+{item.routes.length - 10}</span>
+                          <div className="space-y-0.5 mt-1">
+                            {item.routes.slice(0, 8).map(r => {
+                              const desc = cat.category === 'bus_stop' ? BUS_ROUTE_DESC[r] : null
+                              return (
+                                <div key={r} className="flex items-center gap-1.5">
+                                  <span className={`text-xs px-1.5 py-0.5 rounded font-mono font-bold text-white shrink-0
+                                    ${cat.category === 'metro' ? 'bg-red-600' : 'bg-blue-600'}`}>
+                                    {r}
+                                  </span>
+                                  {desc && <span className="text-xs text-gray-500 truncate">{desc}</span>}
+                                </div>
+                              )
+                            })}
+                            {item.routes.length > 8 && (
+                              <span className="text-xs text-gray-400">+{item.routes.length - 8} more routes</span>
                             )}
                           </div>
                         )}

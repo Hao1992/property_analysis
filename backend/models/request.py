@@ -12,9 +12,12 @@ class AnalyzeRequest(BaseModel):
     # Questionnaire answers — override buyer_profile when provided
     user_answers: Optional[UserAnswers] = None
     # Optional overrides when Catastro data is missing or wrong.
-    # Typically found on Idealista listings as "año de construcción" / "planta".
+    # Typically found on Idealista listings.
     year_built: Optional[int] = None
-    floor: Optional[int] = None       # 0 = ground, 1 = first, etc. Affects noise score.
+    floor: Optional[int] = None            # 0 = ground, 1 = first, etc. Affects noise score.
+    surface_m2: Optional[float] = None     # Advertised surface area from listing
+    energy_cert: Optional[str] = None      # A–G energy rating from listing
+    condition: Optional[str] = None        # "renovated" | "good" | "needs_work"
 
 
 class CompareRequest(BaseModel):

@@ -8,7 +8,7 @@ from models.response import (
     AnalyzeResponse, CompareResponse, CompareAnalysis, CompareNarrative,
     PropertyData, SafetyData, ValuationData, CompositeScore, DimensionScore,
     PoiCategory, PoiItem,
-    AirbnbSaturationData, SchoolQualityData, NoiseData,
+    AirbnbSaturationData, SchoolQualityData, SchoolEntry, NoiseData,
     HiddenCostsData, NeighbourhoodTrajectoryData, NarrativeData,
     DisclosureItem,
 )
@@ -100,9 +100,12 @@ async def _run_full_analysis(
     address: str,
     listing_price: float | None,
     buyer_profile: str,
-    user_answers_json: str | None,    # JSON-serialised UserAnswers for cache key
+    user_answers_json: str | None,
     year_built_override: int | None = None,
     floor_override: int | None = None,
+    surface_m2_override: float | None = None,
+    energy_cert_override: str | None = None,
+    condition_override: str | None = None,
 ) -> dict:
     """Core analysis pipeline — used by both /analyze and /compare."""
     from models.user_profile import UserAnswers
@@ -135,6 +138,12 @@ async def _run_full_analysis(
         overrides["year_built"] = year_built_override
     if floor_override is not None and prop_data.get("floor") is None:
         overrides["floor"] = floor_override
+    if surface_m2_override is not None and prop_data.get("surface_m2") is None:
+        overrides["surface_m2"] = surface_m2_override
+    if energy_cert_override is not None and prop_data.get("energy_cert") is None:
+        overrides["energy_cert"] = energy_cert_override.upper()
+    if condition_override == "renovated":
+        overrides["renovated"] = True
     if overrides:
         prop_data = {**prop_data, **overrides}
 
@@ -217,6 +226,7 @@ async def analyze(req: AnalyzeRequest):
     data = await _run_full_analysis(
         req.address, req.listing_price, req.buyer_profile,
         user_answers_json, req.year_built, req.floor,
+        req.surface_m2, req.energy_cert, req.condition,
     )
 
     lat, lng      = data["lat"], data["lng"]
@@ -263,7 +273,14 @@ async def analyze(req: AnalyzeRequest):
         poi_categories=_format_poi_categories(data["enriched_poi"]),
         safety=SafetyData(**safety_data),
         airbnb_saturation=AirbnbSaturationData(**airbnb_data),
-        school_quality=SchoolQualityData(**school_data),
+        school_quality=SchoolQualityData(
+            nearest_school_m=school_data.get("nearest_school_m"),
+            school_type=school_data.get("school_type"),
+            language=school_data.get("language"),
+            google_rating=school_data.get("google_rating"),
+            composite_score=school_data.get("composite_score", 50.0),
+            schools=[SchoolEntry(**s) for s in school_data.get("schools", [])],
+        ),
         noise=NoiseData(**noise_data),
         neighbourhood_trajectory=NeighbourhoodTrajectoryData(**trajectory_data),
         valuation=ValuationData(
