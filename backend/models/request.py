@@ -11,6 +11,9 @@ class AnalyzeRequest(BaseModel):
     buyer_profile: str = "balanced"
     # Questionnaire answers — override buyer_profile when provided
     user_answers: Optional[UserAnswers] = None
+    # Optional override when Catastro data is missing or wrong.
+    # Typically found on Idealista listings as "año de construcción".
+    year_built: Optional[int] = None
 
 
 class CompareRequest(BaseModel):

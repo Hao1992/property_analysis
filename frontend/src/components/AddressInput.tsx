@@ -18,15 +18,18 @@ export default function AddressInput({ onSubmit, loading }: Props) {
   const [address, setAddress] = useState('')
   const [listingPrice, setListingPrice] = useState('')
   const [profile, setProfile] = useState<AnalyzeRequest['buyer_profile']>('balanced')
+  const [yearBuilt, setYearBuilt] = useState('')
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!address.trim()) return
     const parsedPrice = listingPrice ? parseFloat(listingPrice.replace(/[.,\s]/g, '').replace(',', '.')) : NaN
+    const parsedYear = yearBuilt ? parseInt(yearBuilt, 10) : NaN
     onSubmit({
       address: address.trim(),
       listing_price: !isNaN(parsedPrice) && parsedPrice > 0 ? parsedPrice : undefined,
       buyer_profile: profile,
+      year_built: !isNaN(parsedYear) && parsedYear > 1800 && parsedYear <= new Date().getFullYear() ? parsedYear : undefined,
     })
   }
 
@@ -44,7 +47,7 @@ export default function AddressInput({ onSubmit, loading }: Props) {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <div>
           <label className="block text-sm font-medium text-slate-300 mb-1">
             Listing price (€) <span className="text-slate-500 font-normal">optional</span>
@@ -55,6 +58,21 @@ export default function AddressInput({ onSubmit, loading }: Props) {
             onChange={e => setListingPrice(e.target.value)}
             placeholder="e.g. 450000"
             min={0}
+            className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-sm"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-300 mb-1">
+            Year built <span className="text-slate-500 font-normal">optional — from listing</span>
+          </label>
+          <input
+            type="number"
+            value={yearBuilt}
+            onChange={e => setYearBuilt(e.target.value)}
+            placeholder="e.g. 1975"
+            min={1800}
+            max={new Date().getFullYear()}
             className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-sm"
           />
         </div>

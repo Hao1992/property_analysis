@@ -97,14 +97,24 @@ def calculate_composite(
         v is not None and v < 20 for v in risk_sub.values()
     ) else 1.0
 
-    # Overpricing vs estimated fair value
+    # Overpricing vs estimated fair value.
+    # When valuation confidence is low (< 0.7), INE median data is stale or
+    # unavailable for this census section — do not punish with a hard penalty.
+    # Instead, scale the penalty toward 1.0 proportionally to unreliability.
     delta = valuation_data.get("vs_listing_pct") or 0
-    penalties["overpriced"] = (
+    val_conf = valuation_data.get("confidence", 1.0)
+    raw_penalty = (
         0.80 if delta > 25 else
         0.88 if delta > 15 else
         0.94 if delta > 8  else
         1.0
     )
+    if val_conf < 0.7 and raw_penalty < 1.0:
+        # Blend toward 1.0 (no penalty) based on how unreliable the data is
+        blend = val_conf / 0.7          # 0.0 when conf=0, 1.0 when conf=0.7
+        penalties["overpriced"] = 1.0 - (1.0 - raw_penalty) * blend
+    else:
+        penalties["overpriced"] = raw_penalty
 
     # High derrama risk (surprise major repair assessment)
     penalties["derrama_risk"] = 0.93 if hidden_costs_data.get("derrama_risk_label") == "high" else 1.0

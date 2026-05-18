@@ -121,6 +121,7 @@ export interface CompositeScore {
   composite: number;
   composite_pre_penalty: number;
   grade: string;
+  confidence: number;
   penalty_multipliers: Record<string, number>;
   dimensions: DimensionScore[];
 }
@@ -139,6 +140,8 @@ export interface AnalyzeResponse {
   address: string;
   lat: number;
   lng: number;
+  geocode_confidence: 'high' | 'low';
+  geocode_warning?: string;
   property: PropertyData;
   disclosures: DisclosureItem[];
   poi_categories: PoiCategory[];
@@ -160,6 +163,7 @@ export interface AnalyzeRequest {
   address: string;
   listing_price?: number;
   buyer_profile: 'balanced' | 'family' | 'investor' | 'retiree' | 'expat';
+  year_built?: number;
 }
 
 export interface CompareAnalysis {

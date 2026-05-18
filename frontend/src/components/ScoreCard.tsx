@@ -25,9 +25,14 @@ export default function ScoreCard({ score }: Props) {
     fullMark: 100,
   }))
 
+  const confPct = Math.round((score.confidence ?? 1) * 100)
+  const confColor = confPct >= 80 ? 'text-emerald-400' : confPct >= 60 ? 'text-amber-400' : 'text-red-400'
+  const confBg    = confPct >= 80 ? 'bg-emerald-900/30 border-emerald-800' : confPct >= 60 ? 'bg-amber-900/30 border-amber-800' : 'bg-red-900/30 border-red-800'
+  const missingDims = score.dimensions.filter(d => d.score === null || d.score === undefined)
+
   return (
     <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <p className="text-sm text-slate-400 mb-1">Composite score</p>
           <div className="flex items-baseline gap-3">
@@ -54,10 +59,26 @@ export default function ScoreCard({ score }: Props) {
         </div>
       </div>
 
+      {/* Confidence badge — show when partial data */}
+      {confPct < 90 && (
+        <div className={`mb-4 flex items-start gap-2 border rounded-lg px-3 py-2 ${confBg}`}>
+          <span className={`text-xs font-semibold ${confColor} shrink-0 mt-0.5`}>
+            {confPct}% data
+          </span>
+          <p className="text-xs text-slate-400 leading-relaxed">
+            Score based on {confPct}% of available data points.
+            {missingDims.length > 0 && ` Missing: ${missingDims.map(d => d.name).join(', ')}.`}
+            {' '}This score may shift as more data is retrieved.
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
         {score.dimensions.map(d => (
-          <div key={d.name} className="text-center bg-slate-700/50 rounded-xl py-2 px-1">
-            <div className={`text-xl font-bold ${SCORE_COLOR(d.score)}`}>{d.score}</div>
+          <div key={d.name} className={`text-center rounded-xl py-2 px-1 ${d.score == null ? 'bg-slate-700/20 border border-dashed border-slate-600' : 'bg-slate-700/50'}`}>
+            <div className={`text-xl font-bold ${d.score != null ? SCORE_COLOR(d.score) : 'text-slate-600'}`}>
+              {d.score != null ? d.score : '—'}
+            </div>
             <div className="text-xs text-slate-400 mt-0.5 leading-tight">{DIM_SHORT[d.name] ?? d.name}</div>
             <div className="text-xs text-slate-500">{(d.weight * 100).toFixed(0)}%</div>
           </div>

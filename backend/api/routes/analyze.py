@@ -97,6 +97,7 @@ async def _run_full_analysis(
     listing_price: float | None,
     buyer_profile: str,
     user_answers_json: str | None,    # JSON-serialised UserAnswers for cache key
+    year_built_override: int | None = None,
 ) -> dict:
     """Core analysis pipeline — used by both /analyze and /compare."""
     from models.user_profile import UserAnswers
@@ -122,6 +123,10 @@ async def _run_full_analysis(
         airbnb_saturation.get_airbnb_saturation(lat, lng, district),
         neighbourhood_trajectory.get_neighbourhood_trajectory(lat, lng, district),
     )
+
+    # Apply manual year_built override when Catastro returns null
+    if year_built_override is not None and prop_data.get("year_built") is None:
+        prop_data = {**prop_data, "year_built": year_built_override}
 
     # Step 2: OSM baseline ratings (replaces Google Places — zero cost)
     enriched_poi = await google_places.enrich_with_ratings(poi_raw)
@@ -200,7 +205,8 @@ async def _run_full_analysis(
 async def analyze(req: AnalyzeRequest):
     user_answers_json = req.user_answers.model_dump_json() if req.user_answers else None
     data = await _run_full_analysis(
-        req.address, req.listing_price, req.buyer_profile, user_answers_json
+        req.address, req.listing_price, req.buyer_profile,
+        user_answers_json, req.year_built,
     )
 
     lat, lng      = data["lat"], data["lng"]
@@ -240,6 +246,8 @@ async def analyze(req: AnalyzeRequest):
         request_id=str(uuid.uuid4()),
         address=geo["display_name"],
         lat=lat, lng=lng,
+        geocode_confidence=geo.get("geocode_confidence", "high"),
+        geocode_warning=geo.get("geocode_warning"),
         property=prop_response,
         disclosures=[DisclosureItem(**d) for d in data.get("disclosures", [])],
         poi_categories=_format_poi_categories(data["enriched_poi"]),

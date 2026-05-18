@@ -20,12 +20,19 @@ export default function Report({ data }: Props) {
   return (
     <div className="space-y-5">
       {/* Address header */}
-      <div className="bg-slate-800 border border-slate-700 rounded-2xl p-5">
+      <div className={`border rounded-2xl p-5 ${data.geocode_confidence === 'low' ? 'bg-yellow-950 border-yellow-700' : 'bg-slate-800 border-slate-700'}`}>
         <p className="text-xs text-slate-400 mb-1">Analysis for</p>
         <h2 className="text-base font-semibold text-white leading-snug">{data.address}</h2>
+        {data.geocode_warning && (
+          <div className="mt-3 flex items-start gap-2 bg-yellow-900/50 border border-yellow-700 rounded-lg px-3 py-2">
+            <span className="text-yellow-400 text-sm shrink-0">⚠️</span>
+            <p className="text-xs text-yellow-200 leading-relaxed">
+              <span className="font-semibold">Address mismatch: </span>{data.geocode_warning}
+            </p>
+          </div>
+        )}
         <div className="flex gap-4 mt-2 text-xs text-slate-500">
           <span>ID: {data.request_id.slice(0, 8)}</span>
-          <span>Est. API cost: ${data.analysis_cost_usd}</span>
         </div>
       </div>
 

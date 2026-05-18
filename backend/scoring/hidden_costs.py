@@ -102,10 +102,12 @@ def score_hidden_costs(hidden_costs: dict, prop: dict | None = None) -> dict[str
         sub["monthly_cost"] = None
 
     # ── IBI burden ───────────────────────────────────────────────────────────
+    # Scale: €500/yr → 100 (excellent), €3,500/yr → 30 (notable), €6,000/yr → 0.
+    # Divisor 50 (was 20) — previous scale was calibrated for €150k-300k flats;
+    # premium properties (€500k+) were unfairly penalised for their higher IBI.
     ibi = hidden_costs.get("ibi_annual_eur")
     if ibi is not None:
-        # €500/yr → 100; €2500/yr → 0
-        sub["ibi_burden"] = max(0, min(100, round(100 - (ibi - 500) / 20)))
+        sub["ibi_burden"] = max(0, min(100, round(100 - (ibi - 500) / 50)))
     else:
         sub["ibi_burden"] = None
 

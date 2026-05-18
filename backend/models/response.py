@@ -142,6 +142,8 @@ class AnalyzeResponse(BaseModel):
     address: str
     lat: float
     lng: float
+    geocode_confidence: str = "high"       # high | low
+    geocode_warning: Optional[str] = None  # shown in UI when confidence is low
     property: PropertyData
     disclosures: list[DisclosureItem] = []
     poi_categories: list[PoiCategory]
