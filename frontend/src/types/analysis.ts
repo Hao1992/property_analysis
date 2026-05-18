@@ -159,11 +159,24 @@ export interface AnalyzeResponse {
   analysis_cost_usd: number;
 }
 
+export interface UserAnswers {
+  children_age?:       'none' | 'young' | 'teen'
+  stay_duration?:      'short' | 'medium' | 'long'
+  has_car?:            boolean
+  rental_intent?:      'none' | 'long_term' | 'short_term'
+  noise_tolerance?:    'love_it' | 'neutral' | 'need_quiet'
+  work_situation?:     'home' | 'commute' | 'retired'
+  renovation_appetite?:'ready' | 'minor' | 'move_in_ready'
+  lifestyle_priority?: 'important' | 'neutral' | 'not_important'
+}
+
 export interface AnalyzeRequest {
   address: string;
   listing_price?: number;
   buyer_profile: 'balanced' | 'family' | 'investor' | 'retiree' | 'expat';
+  user_answers?: UserAnswers;
   year_built?: number;
+  floor?: number;
 }
 
 export interface CompareAnalysis {

@@ -1,4 +1,5 @@
 import { SchoolQualityData } from '../types/analysis';
+import SourceBadge from './SourceBadge';
 
 interface Props {
   data: SchoolQualityData;
@@ -71,7 +72,11 @@ export default function SchoolQualityModule({ data }: Props) {
       {!data.nearest_school_m && (
         <p className="text-xs text-slate-500">No school found within 500m.</p>
       )}
-      <p className="text-xs text-slate-500">Composite: distance (40%) + type (20%) + Google rating (40%)</p>
+      <p className="text-xs text-slate-500">Score: distance (40%) · type/funding (20%) · quality rating (40%)</p>
+      <SourceBadge sources={[
+        { label: 'OpenStreetMap', url: 'https://www.openstreetmap.org/', note: 'school locations & type tags' },
+        { label: 'Ministerio de Educación', url: 'https://datos.gob.es/es/catalogo/ea0010587', note: 'public/concertada/private classification' },
+      ]} />
     </div>
   );
 }

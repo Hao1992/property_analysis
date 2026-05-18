@@ -1,4 +1,5 @@
-import type { CompositeScore } from '../types/analysis'
+import { useState } from 'react'
+import type { CompositeScore, DimensionScore } from '../types/analysis'
 import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tooltip
 } from 'recharts'
@@ -10,15 +11,92 @@ const SCORE_COLOR = (s: number) =>
 
 const DIM_SHORT: Record<string, string> = {
   Convenience: 'Conv.',
-  Safety: 'Safety',
-  Property: 'Prop.',
-  Market: 'Market',
-  Risk: 'Risk',
+  Safety:      'Safety',
+  Property:    'Prop.',
+  Market:      'Market',
+  Risk:        'Risk',
   Liveability: 'Live.',
   HiddenCosts: 'Costs',
+  Intangible:  'Intang.',
+}
+
+const DIM_DESC: Record<string, { title: string; what: string }> = {
+  Convenience: {
+    title: 'Convenience',
+    what:  'Metro/bus proximity and frequency, supermarkets, pharmacies, hospitals nearby.',
+  },
+  Safety: {
+    title: 'Safety',
+    what:  'District-level crime indices: theft, vehicle crime, vandalism, night safety. Source: BCN Open Data 2024.',
+  },
+  Property: {
+    title: 'Property condition',
+    what:  'Building age, era-specific risks (aluminosis, asbestos), orientation, energy certificate. Requires year built data.',
+  },
+  Market: {
+    title: 'Market positioning',
+    what:  'How listing price compares to INE median for this census section. Also includes rental yield and market liquidity.',
+  },
+  Risk: {
+    title: 'Risk factors',
+    what:  'Structural/material risks, flood/seismic zone, regulatory risk, heritage listing restrictions, rent control status.',
+  },
+  Liveability: {
+    title: 'Liveability',
+    what:  'Noise levels (day/night/weekend), school quality, neighbourhood business trajectory.',
+  },
+  HiddenCosts: {
+    title: 'Hidden costs',
+    what:  'IBI property tax, community fees, utility estimates, derrama (major repair levy) risk, energy upgrade mandate.',
+  },
+  Intangible: {
+    title: 'Intangible quality',
+    what:  'Cultural density (libraries, theatres), traditional markets, local vs chain commerce ratio, green space quality.',
+  },
+}
+
+function DimPanel({ d, onClose }: { d: DimensionScore; onClose: () => void }) {
+  const desc = DIM_DESC[d.name]
+  const subEntries = Object.entries(d.sub_scores ?? {})
+    .filter(([, v]) => v !== null && v !== undefined)
+    .sort(([, a], [, b]) => (b as number) - (a as number))
+
+  return (
+    <div className="col-span-4 sm:col-span-7 bg-slate-700 rounded-xl p-4 text-xs space-y-3 border border-slate-600">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="font-semibold text-white text-sm">{desc?.title ?? d.name}</p>
+          <p className="text-slate-400 mt-0.5 leading-relaxed">{desc?.what}</p>
+        </div>
+        <button onClick={onClose} className="text-slate-500 hover:text-white shrink-0 text-lg leading-none">×</button>
+      </div>
+      {subEntries.length > 0 && (
+        <div className="space-y-1.5">
+          {subEntries.map(([k, v]) => {
+            const val = v as number
+            const barColor = val >= 70 ? 'bg-emerald-500' : val >= 45 ? 'bg-amber-500' : 'bg-red-500'
+            return (
+              <div key={k}>
+                <div className="flex justify-between mb-0.5">
+                  <span className="text-slate-400 capitalize">{k.replace(/_/g, ' ')}</span>
+                  <span className={`font-semibold ${val >= 70 ? 'text-emerald-400' : val >= 45 ? 'text-amber-400' : 'text-red-400'}`}>{Math.round(val)}</span>
+                </div>
+                <div className="w-full bg-slate-600 rounded-full h-1.5">
+                  <div className={`h-1.5 rounded-full ${barColor}`} style={{ width: `${val}%` }} />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+      <p className="text-slate-500">Weight in composite score: {(d.weight * 100).toFixed(0)}%</p>
+    </div>
+  )
 }
 
 export default function ScoreCard({ score }: Props) {
+  const [openDim, setOpenDim] = useState<string | null>(null)
+
   const radarData = score.dimensions.map(d => ({
     subject: DIM_SHORT[d.name] ?? d.name,
     score: d.score,
@@ -73,29 +151,61 @@ export default function ScoreCard({ score }: Props) {
         </div>
       )}
 
-      <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
-        {score.dimensions.map(d => (
-          <div key={d.name} className={`text-center rounded-xl py-2 px-1 ${d.score == null ? 'bg-slate-700/20 border border-dashed border-slate-600' : 'bg-slate-700/50'}`}>
-            <div className={`text-xl font-bold ${d.score != null ? SCORE_COLOR(d.score) : 'text-slate-600'}`}>
-              {d.score != null ? d.score : '—'}
-            </div>
-            <div className="text-xs text-slate-400 mt-0.5 leading-tight">{DIM_SHORT[d.name] ?? d.name}</div>
-            <div className="text-xs text-slate-500">{(d.weight * 100).toFixed(0)}%</div>
-          </div>
-        ))}
+      <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+        {score.dimensions.map(d => {
+          const isOpen = openDim === d.name
+          return (
+            <button
+              key={d.name}
+              onClick={() => setOpenDim(isOpen ? null : d.name)}
+              className={`text-center rounded-xl py-2 px-1 transition-all cursor-pointer ring-0 border
+                ${isOpen ? 'ring-2 ring-indigo-500 border-indigo-500 bg-slate-600' : d.score == null ? 'bg-slate-700/20 border-dashed border-slate-600' : 'bg-slate-700/50 border-transparent hover:border-slate-500'}`}
+              title={`Click to see ${d.name} breakdown`}
+            >
+              <div className={`text-xl font-bold ${d.score != null ? SCORE_COLOR(d.score) : 'text-slate-600'}`}>
+                {d.score != null ? Math.round(d.score) : '—'}
+              </div>
+              <div className="text-xs text-slate-400 mt-0.5 leading-tight">{DIM_SHORT[d.name] ?? d.name}</div>
+              <div className="text-xs text-slate-500">{(d.weight * 100).toFixed(0)}%</div>
+            </button>
+          )
+        })}
+
+        {/* Expanded panel — always full width below the tiles */}
+        {openDim && (() => {
+          const dim = score.dimensions.find(d => d.name === openDim)
+          return dim ? <DimPanel d={dim} onClose={() => setOpenDim(null)} /> : null
+        })()}
       </div>
 
-      {Object.entries(score.penalty_multipliers).some(([, v]) => v < 1) && (
+      {Object.entries(score.penalty_multipliers).some(([, v]) => v !== 1) && (
         <div className="mt-4 pt-4 border-t border-slate-700">
-          <p className="text-xs text-slate-500 mb-2">Penalties applied:</p>
-          <div className="flex gap-2 flex-wrap">
+          <p className="text-xs text-slate-500 mb-2">Score adjustments</p>
+          <div className="space-y-1.5">
             {Object.entries(score.penalty_multipliers)
-              .filter(([, v]) => v < 1)
-              .map(([key, val]) => (
-                <span key={key} className="text-xs bg-red-900/40 text-red-400 border border-red-800 px-2 py-0.5 rounded-full">
-                  {key.replace(/_/g, ' ')} ×{val}
-                </span>
-              ))}
+              .filter(([, v]) => v !== 1)
+              .map(([key, val]) => {
+                const pre = score.composite_pre_penalty
+                const pts = Math.round(pre * (val - 1))
+                const pct = Math.round(Math.abs(1 - val) * 100)
+                const isBonus = val > 1
+                const label: Record<string, string> = {
+                  overpriced:          'Listed above fair value estimate',
+                  critical_risk:       'Critical structural or safety risk detected',
+                  derrama_risk:        'High risk of upcoming major repair levy',
+                  tourist_saturation:  isBonus ? 'High tourist demand (STR premium)' : 'High tourist apartment pressure',
+                }
+                return (
+                  <div key={key} className={`flex items-center justify-between rounded-lg px-3 py-2 text-xs ${isBonus ? 'bg-green-900/30 border border-green-800' : 'bg-red-900/30 border border-red-800'}`}>
+                    <span className={isBonus ? 'text-green-300' : 'text-red-300'}>
+                      {label[key] ?? key.replace(/_/g, ' ')}
+                    </span>
+                    <span className={`font-semibold ml-3 shrink-0 ${isBonus ? 'text-green-400' : 'text-red-400'}`}>
+                      {isBonus ? '+' : ''}{pts} pts ({isBonus ? '+' : '-'}{pct}%)
+                    </span>
+                  </div>
+                )
+              })}
           </div>
         </div>
       )}

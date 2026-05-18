@@ -1,5 +1,6 @@
 import type { ValuationData } from '../types/analysis'
 import WaterfallChart from './WaterfallChart'
+import SourceBadge from './SourceBadge'
 
 interface Props { valuation: ValuationData; listingPrice?: number }
 
@@ -53,6 +54,10 @@ export default function ValuationModule({ valuation, listingPrice }: Props) {
       </div>
 
       <WaterfallChart base={valuation.base_value} adjustments={valuation.adjustments} fair={valuation.fair_value} />
+      <SourceBadge className="mt-4" sources={[
+        { label: 'INE — median price/m²', url: 'https://www.ine.es/jaxiT3/Tabla.htm?t=25171', note: 'by census section' },
+        { label: 'Catastro', url: 'https://www.catastro.meh.es/', note: 'cadastral value, surface, year built' },
+      ]} />
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import { AirbnbSaturationData } from '../types/analysis';
+import SourceBadge from './SourceBadge';
 
 interface Props {
   data: AirbnbSaturationData;
@@ -57,7 +58,7 @@ export default function AirbnbSaturation({ data }: Props) {
         </p>
       )}
 
-      <p className="text-xs text-slate-500">Source: {data.data_source}</p>
+      <SourceBadge sources={[{ label: 'Inside Airbnb', url: 'http://insideairbnb.com/barcelona/', note: 'active listings' }, { label: 'Barcelona 2028 tourist apartment ban', url: 'https://www.idealista.com/en/news/property-for-rent-in-spain/2025/06/12/848193-goodbye-airbnb-barcelona-sets-2028-deadline-to-phase-out-tourist-apartments' }]} />
     </div>
   );
 }

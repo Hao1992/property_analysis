@@ -1,4 +1,5 @@
 import type { PoiCategory } from '../types/analysis'
+import SourceBadge from './SourceBadge'
 
 interface Props { categories: PoiCategory[] }
 
@@ -128,6 +129,7 @@ export default function NeighborhoodModule({ categories }: Props) {
           </div>
         ))}
       </div>
+      <SourceBadge className="mt-4" sources={[{ label: 'OpenStreetMap via Overpass API', url: 'https://overpass-turbo.eu/', note: 'POI locations within 500m' }]} />
     </div>
   )
 }

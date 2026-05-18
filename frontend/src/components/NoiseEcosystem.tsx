@@ -1,4 +1,5 @@
 import { NoiseData } from '../types/analysis';
+import SourceBadge from './SourceBadge';
 
 interface Props {
   data: NoiseData;
@@ -65,8 +66,9 @@ export default function NoiseEcosystem({ data }: Props) {
 
       <p className="text-xs text-slate-500">
         {CONSTRUCTION_LABELS[data.construction_risk] ?? ''}
-        {' · Bars also counted as convenience amenities in the Convenience score.'}
+        {' · Score derived from OSM POI counts within 500m. Visit at night to verify.'}
       </p>
+      <SourceBadge sources={[{ label: 'OpenStreetMap via Overpass API', url: 'https://overpass-turbo.eu/', note: 'bars, clubs, nightlife POIs' }]} />
     </div>
   );
 }

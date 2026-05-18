@@ -1,4 +1,5 @@
 import { NeighbourhoodTrajectoryData } from '../types/analysis';
+import SourceBadge from './SourceBadge';
 
 interface Props {
   data: NeighbourhoodTrajectoryData;
@@ -36,9 +37,11 @@ export default function NeighbourhoodTrajectory({ data }: Props) {
         </div>
       </div>
 
-      <p className="text-xs text-slate-500">
-        Signal: new BCN activity licences in district · higher = more commercial activity
-      </p>
+      <p className="text-xs text-slate-500">New business licences + renovation permits in district over 12 months.</p>
+      <SourceBadge sources={[
+        { label: 'BCN Activitats Comercials', url: 'https://opendata-ajuntament.barcelona.cat/data/ca/dataset/activitats-comercials-icub', note: 'business licence registry' },
+        { label: 'BCN Llicències d\'Obres', url: 'https://opendata-ajuntament.barcelona.cat/data/ca/dataset/llicencies-obres-majors', note: 'major works permits' },
+      ]} />
     </div>
   );
 }

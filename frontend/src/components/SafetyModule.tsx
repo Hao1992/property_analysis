@@ -1,4 +1,5 @@
 import type { SafetyData } from '../types/analysis'
+import SourceBadge from './SourceBadge'
 
 interface Props { safety: SafetyData }
 
@@ -45,9 +46,10 @@ export default function SafetyModule({ safety }: Props) {
         })}
       </div>
 
-      <p className="text-xs text-gray-400 mt-4">
-        All indices 0–100 (100 = safest). Source: Open Data Barcelona.
-      </p>
+      <div className="mt-4 space-y-1">
+        <p className="text-xs text-gray-400">All indices 0–100 (100 = safest). District-level data, not street-level.</p>
+        <SourceBadge sources={[{ label: 'Open Data Barcelona — Seguretat Ciutadana', url: 'https://opendata-ajuntament.barcelona.cat/data/ca/dataset/estadistica-de-seguretat-ciutadana', note: `${safety.data_year} data` }]} />
+      </div>
     </div>
   )
 }

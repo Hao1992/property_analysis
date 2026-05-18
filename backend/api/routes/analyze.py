@@ -98,6 +98,7 @@ async def _run_full_analysis(
     buyer_profile: str,
     user_answers_json: str | None,    # JSON-serialised UserAnswers for cache key
     year_built_override: int | None = None,
+    floor_override: int | None = None,
 ) -> dict:
     """Core analysis pipeline — used by both /analyze and /compare."""
     from models.user_profile import UserAnswers
@@ -124,9 +125,14 @@ async def _run_full_analysis(
         neighbourhood_trajectory.get_neighbourhood_trajectory(lat, lng, district),
     )
 
-    # Apply manual year_built override when Catastro returns null
+    # Apply manual overrides when Catastro returns null
+    overrides: dict = {}
     if year_built_override is not None and prop_data.get("year_built") is None:
-        prop_data = {**prop_data, "year_built": year_built_override}
+        overrides["year_built"] = year_built_override
+    if floor_override is not None and prop_data.get("floor") is None:
+        overrides["floor"] = floor_override
+    if overrides:
+        prop_data = {**prop_data, **overrides}
 
     # Step 2: OSM baseline ratings (replaces Google Places — zero cost)
     enriched_poi = await google_places.enrich_with_ratings(poi_raw)
@@ -206,7 +212,7 @@ async def analyze(req: AnalyzeRequest):
     user_answers_json = req.user_answers.model_dump_json() if req.user_answers else None
     data = await _run_full_analysis(
         req.address, req.listing_price, req.buyer_profile,
-        user_answers_json, req.year_built,
+        user_answers_json, req.year_built, req.floor,
     )
 
     lat, lng      = data["lat"], data["lng"]

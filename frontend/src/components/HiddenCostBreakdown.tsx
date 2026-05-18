@@ -1,4 +1,5 @@
 import { HiddenCostsData } from '../types/analysis';
+import SourceBadge from './SourceBadge';
 
 interface Props {
   data: HiddenCostsData;
@@ -66,6 +67,10 @@ export default function HiddenCostBreakdown({ data }: Props) {
           )}
         </div>
       )}
+      <SourceBadge className="mt-2" sources={[
+        { label: 'Catastro', url: 'https://www.catastro.meh.es/', note: 'IBI = cadastral value × 0.75%' },
+        { label: 'BCN Open Data', url: 'https://opendata-ajuntament.barcelona.cat/', note: 'avg community fee by building age' },
+      ]} />
     </div>
   );
 }
