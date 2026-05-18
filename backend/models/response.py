@@ -128,12 +128,22 @@ class CompositeScore(BaseModel):
     dimensions: list[DimensionScore]
 
 
+class DisclosureItem(BaseModel):
+    id: str
+    severity: str                    # red | yellow | green | info
+    category: str                    # costs | building | legal | neighborhood
+    title: str
+    detail: str
+    action: Optional[str] = None
+
+
 class AnalyzeResponse(BaseModel):
     request_id: str
     address: str
     lat: float
     lng: float
     property: PropertyData
+    disclosures: list[DisclosureItem] = []
     poi_categories: list[PoiCategory]
     safety: SafetyData
     airbnb_saturation: AirbnbSaturationData

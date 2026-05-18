@@ -80,9 +80,10 @@ def _google_quality(enriched: dict) -> float | None:
             continue
         for item in rated:
             rating  = item["google_rating"]
-            reviews = item.get("google_reviews") or 0
-            # Bayesian confidence: needs ~30 reviews for full trust
-            conf = min(1.0, math.log1p(reviews) / math.log1p(30))
+            if item.get("google_reviews") is None:
+                conf = 0.5  # OSM baseline prior — no review evidence, half-weight
+            else:
+                conf = min(1.0, math.log1p(item["google_reviews"]) / math.log1p(30))
             scores.append(weight * (rating / 5.0) * conf)
     if not scores:
         return None

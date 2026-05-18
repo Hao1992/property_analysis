@@ -125,12 +125,22 @@ export interface CompositeScore {
   dimensions: DimensionScore[];
 }
 
+export interface DisclosureItem {
+  id: string;
+  severity: 'red' | 'yellow' | 'green' | 'info';
+  category: 'costs' | 'building' | 'legal' | 'neighborhood';
+  title: string;
+  detail: string;
+  action?: string;
+}
+
 export interface AnalyzeResponse {
   request_id: string;
   address: string;
   lat: number;
   lng: number;
   property: PropertyData;
+  disclosures: DisclosureItem[];
   poi_categories: PoiCategory[];
   safety: SafetyData;
   airbnb_saturation: AirbnbSaturationData;

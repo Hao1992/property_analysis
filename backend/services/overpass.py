@@ -13,6 +13,7 @@ CATEGORY_MAP = {
     "bus_stop":       {"highway": ["bus_stop"]},
     "metro":          {"railway": ["station", "subway_entrance"], "station": ["subway"]},
     "hospital":       {"amenity": ["hospital", "clinic"]},
+    "gym":            {"leisure": ["fitness_centre", "sports_centre"], "amenity": ["gym"]},
     # Intangible dimension sources
     "library":        {"amenity": ["library"]},
     "cultural_centre":{"amenity": ["arts_centre", "cultural_centre", "community_centre"]},
@@ -161,6 +162,7 @@ def classify_element(tags: dict) -> str | None:
     if leisure in ["park", "garden"]: return "park"
     if highway == "bus_stop": return "bus_stop"
     if railway in ["station", "subway_entrance"] or station == "subway": return "metro"
+    if leisure in ["fitness_centre", "sports_centre"] or amenity == "gym": return "gym"
     if amenity == "library": return "library"
     if amenity in ["arts_centre", "cultural_centre", "community_centre"]: return "cultural_centre"
     if amenity in ["theatre", "cinema"]: return "theatre"

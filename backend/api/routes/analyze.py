@@ -10,10 +10,11 @@ from models.response import (
     PoiCategory, PoiItem,
     AirbnbSaturationData, SchoolQualityData, NoiseData,
     HiddenCostsData, NeighbourhoodTrajectoryData, NarrativeData,
+    DisclosureItem,
 )
 from services import geocoder, overpass, google_places, catastro, ine, open_data_bcn
 from services import airbnb_saturation, school_quality, noise_ecosystem, neighbourhood_trajectory
-from services import ai_narrative
+from services import ai_narrative, disclosures
 from scoring import engine, valuation
 from scoring.hidden_costs import estimate_hidden_costs
 from utils.cache import cached
@@ -122,7 +123,7 @@ async def _run_full_analysis(
         neighbourhood_trajectory.get_neighbourhood_trajectory(lat, lng, district),
     )
 
-    # Step 2: Google Places enrichment (sequential — cost control)
+    # Step 2: OSM baseline ratings (replaces Google Places — zero cost)
     enriched_poi = await google_places.enrich_with_ratings(poi_raw)
 
     # Step 3: INE price data
@@ -151,6 +152,17 @@ async def _run_full_analysis(
         legacy_profile=buyer_profile,
     )
 
+    disclosure_items = disclosures.generate_disclosures(
+        prop_data=prop_data,
+        airbnb_data=airbnb_data,
+        noise_data=noise_data,
+        hidden_costs_data=hidden_costs_data,
+        trajectory_data=trajectory_data,
+        school_data=school_data,
+        listing_price=listing_price,
+        buyer_profile=buyer_profile,
+    )
+
     analysis_flat = {
         "address":                  geo["display_name"],
         "lat":                      lat,
@@ -164,6 +176,7 @@ async def _run_full_analysis(
         "valuation":                valuation_data,
         "hidden_costs":             hidden_costs_data,
         "score":                    score_data,
+        "disclosures":              disclosure_items,
         "enriched_poi":             enriched_poi,
         "poi_raw":                  poi_raw,
     }
@@ -228,6 +241,7 @@ async def analyze(req: AnalyzeRequest):
         address=geo["display_name"],
         lat=lat, lng=lng,
         property=prop_response,
+        disclosures=[DisclosureItem(**d) for d in data.get("disclosures", [])],
         poi_categories=_format_poi_categories(data["enriched_poi"]),
         safety=SafetyData(**safety_data),
         airbnb_saturation=AirbnbSaturationData(**airbnb_data),
@@ -274,11 +288,11 @@ async def analyze(req: AnalyzeRequest):
             generated_by=narrative_data.get("generated_by", "claude-code-subscription"),
         ),
         data_sources=[
-            "Nominatim", "Overpass API", "Google Places",
+            "Nominatim", "Overpass API", "OSM Baseline Ratings",
             "Catastro", "INE", "Open Data BCN",
             "Inside Airbnb", "BCN Licences API", "Claude Code",
         ],
-        analysis_cost_usd=round(enriched_count * 0.017, 2),
+        analysis_cost_usd=0.0,
     )
 
 

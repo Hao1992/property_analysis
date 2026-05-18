@@ -12,6 +12,7 @@ import AirbnbSaturation from '../components/AirbnbSaturation'
 import SchoolQualityModule from '../components/SchoolQualityModule'
 import NoiseEcosystem from '../components/NoiseEcosystem'
 import NeighbourhoodTrajectory from '../components/NeighbourhoodTrajectory'
+import DisclosureSection from '../components/DisclosureSection'
 
 interface Props { data: AnalyzeResponse }
 
@@ -27,6 +28,9 @@ export default function Report({ data }: Props) {
           <span>Est. API cost: ${data.analysis_cost_usd}</span>
         </div>
       </div>
+
+      {/* Disclosures — what to know before signing */}
+      <DisclosureSection items={data.disclosures ?? []} />
 
       {/* AI Narrative — hero element */}
       <NarrativeCard
