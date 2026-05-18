@@ -9,6 +9,23 @@ interface Props { score: CompositeScore }
 const SCORE_COLOR = (s: number) =>
   s >= 75 ? 'text-emerald-400' : s >= 55 ? 'text-amber-400' : 'text-red-400'
 
+// Approximate Barcelona composite score distribution (editorial estimate based on
+// typical BCN property quality: noise, tourist pressure, building age, pricing).
+// Maps score → estimated percentile (what % of BCN properties score BELOW this).
+const BCN_PERCENTILE = (score: number): number => {
+  if (score >= 85) return 97
+  if (score >= 80) return 93
+  if (score >= 75) return 87
+  if (score >= 70) return 78
+  if (score >= 65) return 66
+  if (score >= 60) return 54
+  if (score >= 55) return 42
+  if (score >= 50) return 30
+  if (score >= 45) return 20
+  if (score >= 40) return 12
+  return 6
+}
+
 const DIM_SHORT: Record<string, string> = {
   Convenience: 'Conv.',
   Safety:      'Safety',
@@ -107,6 +124,7 @@ export default function ScoreCard({ score }: Props) {
   const confColor = confPct >= 80 ? 'text-emerald-400' : confPct >= 60 ? 'text-amber-400' : 'text-red-400'
   const confBg    = confPct >= 80 ? 'bg-emerald-900/30 border-emerald-800' : confPct >= 60 ? 'bg-amber-900/30 border-amber-800' : 'bg-red-900/30 border-red-800'
   const missingDims = score.dimensions.filter(d => d.score === null || d.score === undefined)
+  const percentile = BCN_PERCENTILE(score.composite)
 
   return (
     <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6">
@@ -118,6 +136,17 @@ export default function ScoreCard({ score }: Props) {
               {score.composite}
             </span>
             <span className="text-slate-500 text-xl">/100</span>
+          </div>
+          <div className="mt-2 flex items-center gap-1.5">
+            <div className="flex-1 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full ${SCORE_COLOR(score.composite).replace('text-', 'bg-')}`}
+                style={{ width: `${percentile}%` }}
+              />
+            </div>
+            <span className="text-xs text-slate-400 shrink-0">
+              better than <span className="text-white font-medium">{percentile}%</span> of BCN properties
+            </span>
           </div>
         </div>
 

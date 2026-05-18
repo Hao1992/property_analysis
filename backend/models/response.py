@@ -6,6 +6,8 @@ class PoiItem(BaseModel):
     name: str
     distance_m: float
     category: str
+    lat: Optional[float] = None
+    lng: Optional[float] = None
     google_rating: Optional[float] = None
     google_reviews: Optional[int] = None
     routes: list[str] = []

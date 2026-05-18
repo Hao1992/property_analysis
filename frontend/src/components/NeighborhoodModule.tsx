@@ -1,7 +1,8 @@
 import type { PoiCategory } from '../types/analysis'
 import SourceBadge from './SourceBadge'
+import TransitMap from './TransitMap'
 
-interface Props { categories: PoiCategory[] }
+interface Props { categories: PoiCategory[]; lat: number; lng: number }
 
 const CATEGORY_ICONS: Record<string, string> = {
   supermarket:     '🛒',
@@ -63,20 +64,77 @@ const CountBadge = ({ count, category }: { count: number; category: string }) =>
   )
 }
 
-export default function NeighborhoodModule({ categories }: Props) {
-  // Sort: put categories with results first, then by count desc
-  const sorted = [...categories].sort((a, b) => {
+const TRANSIT_CATS = new Set(['metro', 'bus_stop'])
+
+export default function NeighborhoodModule({ categories, lat, lng }: Props) {
+  const transit = categories.filter(c => TRANSIT_CATS.has(c.category))
+  const amenities = categories.filter(c => !TRANSIT_CATS.has(c.category))
+  const metro   = categories.find(c => c.category === 'metro')
+  const busStop = categories.find(c => c.category === 'bus_stop')
+
+  const sortedAmenities = [...amenities].sort((a, b) => {
     if (a.total_count === 0 && b.total_count > 0) return 1
     if (a.total_count > 0 && b.total_count === 0) return -1
     return b.total_count - a.total_count
   })
 
+  // Metro first, then bus
+  const sortedTransit = [...transit].sort((a) => a.category === 'metro' ? -1 : 1)
+
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-6">
-      <h2 className="text-lg font-semibold mb-1">Neighbourhood POIs</h2>
-      <p className="text-xs text-gray-400 mb-4">Within 500m radius</p>
+    <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-6">
+
+      {/* Transit — separate prominent section */}
+      {sortedTransit.some(c => c.total_count > 0) && (
+        <div>
+          <h2 className="text-lg font-semibold mb-1">Public Transport</h2>
+          <p className="text-xs text-gray-400 mb-4">Click a marker to see routes · 500m radius · deduplicated stops</p>
+          <TransitMap lat={lat} lng={lng} metro={metro} busStop={busStop} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+            {sortedTransit.filter(c => c.total_count > 0).map(cat => (
+              <div key={cat.category} className="border border-gray-100 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">{CATEGORY_ICONS[cat.category] ?? '🚏'}</span>
+                    <span className="font-medium text-sm">{CATEGORY_LABELS[cat.category] ?? cat.category}</span>
+                  </div>
+                  <CountBadge count={cat.total_count} category={cat.category} />
+                </div>
+                <div className="space-y-2.5">
+                  {cat.top_items.map((item, i) => (
+                    <div key={i} className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-gray-800 truncate">{item.name}</p>
+                        {item.routes && item.routes.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {item.routes.slice(0, 10).map(r => (
+                              <span key={r} className={`text-xs px-1.5 py-0.5 rounded font-mono font-bold text-white
+                                ${cat.category === 'metro' ? 'bg-red-600' : 'bg-blue-600'}`}>
+                                {r}
+                              </span>
+                            ))}
+                            {item.routes.length > 10 && (
+                              <span className="text-xs text-gray-400">+{item.routes.length - 10}</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <span className="text-xs text-gray-400 shrink-0 mt-0.5">{item.distance_m}m</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Amenities grid */}
+      <div>
+        <h2 className="text-lg font-semibold mb-1">Neighbourhood Amenities</h2>
+        <p className="text-xs text-gray-400 mb-4">Within 500m radius</p>
       <div className="grid grid-cols-2 gap-4">
-        {sorted.map(cat => (
+        {sortedAmenities.map(cat => (
           <div key={cat.category} className={`border rounded-xl p-4 ${cat.total_count === 0 ? 'border-gray-100 bg-gray-50' : 'border-gray-100'}`}>
             {/* Header */}
             <div className="flex items-center justify-between mb-3">
@@ -129,7 +187,9 @@ export default function NeighborhoodModule({ categories }: Props) {
           </div>
         ))}
       </div>
-      <SourceBadge className="mt-4" sources={[{ label: 'OpenStreetMap via Overpass API', url: 'https://overpass-turbo.eu/', note: 'POI locations within 500m' }]} />
+      </div>  {/* end amenities */}
+
+      <SourceBadge sources={[{ label: 'OpenStreetMap via Overpass API', url: 'https://overpass-turbo.eu/', note: 'POI locations within 500m' }]} />
     </div>
   )
 }

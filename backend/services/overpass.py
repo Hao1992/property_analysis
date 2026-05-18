@@ -109,7 +109,56 @@ out center tags;
     for cat in result:
         result[cat].sort(key=lambda x: x["distance_m"])
 
+    # Deduplicate transit stops:
+    # - Bus stops within 80m of each other → keep closest, merge route sets
+    # - Metro entrances with same station name → keep closest, merge route sets
+    result["bus_stop"] = _dedupe_transit(result["bus_stop"], radius_m=80)
+    result["metro"]    = _dedupe_metro(result["metro"])
+
     return result
+
+
+def _dedupe_transit(stops: list[dict], radius_m: int = 80) -> list[dict]:
+    """Merge bus stops within radius_m of each other (opposite-direction stops of the same intersection)."""
+    merged: list[dict] = []
+    used = set()
+    for i, stop in enumerate(stops):
+        if i in used:
+            continue
+        cluster = [stop]
+        for j, other in enumerate(stops[i + 1:], i + 1):
+            if j in used:
+                continue
+            if haversine(stop["lat"], stop["lng"], other["lat"], other["lng"]) <= radius_m:
+                cluster.append(other)
+                used.add(j)
+        # Merge: keep closest (first), union all route sets
+        representative = dict(cluster[0])
+        all_routes: list[str] = []
+        seen_routes: set[str] = set()
+        for s in cluster:
+            for r in s.get("routes", []):
+                if r not in seen_routes:
+                    all_routes.append(r)
+                    seen_routes.add(r)
+        representative["routes"] = sorted(all_routes)
+        merged.append(representative)
+    return merged
+
+
+def _dedupe_metro(stops: list[dict]) -> list[dict]:
+    """Collapse multiple entrances of the same metro station into one (closest), merging routes."""
+    seen_names: dict[str, dict] = {}
+    for stop in stops:
+        name = stop["name"].lower().strip()
+        if name not in seen_names:
+            seen_names[name] = dict(stop)
+        else:
+            # Already have this station; merge routes
+            existing = seen_names[name]
+            combined = set(existing.get("routes", [])) | set(stop.get("routes", []))
+            existing["routes"] = sorted(combined)
+    return list(seen_names.values())
 
 
 async def _fetch_transit_routes(lat: float, lng: float, radius_m: int) -> dict[str, list[str]]:

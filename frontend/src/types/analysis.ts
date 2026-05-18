@@ -2,6 +2,8 @@ export interface PoiItem {
   name: string;
   distance_m: number;
   category: string;
+  lat?: number;
+  lng?: number;
   google_rating?: number;
   google_reviews?: number;
   routes: string[];

@@ -27,8 +27,10 @@ router = APIRouter()
 def _format_poi_categories(enriched: dict) -> list[PoiCategory]:
     result = []
     for cat, items in enriched.items():
-        top3  = items[:3]
-        rated = [i for i in top3 if i.get("google_rating") is not None]
+        # Transit: show more stops for map rendering; others: top 3
+        n = 8 if cat in ("bus_stop", "metro") else 3
+        top_n = items[:n]
+        rated = [i for i in top_n[:3] if i.get("google_rating") is not None]
         avg_rating    = round(sum(i["google_rating"] for i in rated) / len(rated), 1) if rated else None
         total_reviews = sum(i.get("google_reviews") or 0 for i in rated) or None
         poi_items = [
@@ -36,11 +38,13 @@ def _format_poi_categories(enriched: dict) -> list[PoiCategory]:
                 name=p["name"],
                 distance_m=p["distance_m"],
                 category=cat,
+                lat=p.get("lat"),
+                lng=p.get("lng"),
                 google_rating=p.get("google_rating"),
                 google_reviews=p.get("google_reviews"),
                 routes=p.get("routes", []),
             )
-            for p in top3
+            for p in top_n
         ]
         result.append(PoiCategory(
             category=cat,
