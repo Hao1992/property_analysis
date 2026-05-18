@@ -27,12 +27,19 @@ _BCN_TRANSIT_LINES: dict[str, list[str]] = {
     # TMB Metro L5 (blue)
     "collblanc":       ["L5","L9S"], "badal":  ["L5"], "entença":       ["L5"],
     "hospital de bellvitge": ["L1"], "pubilla cases": ["L5"],
-    # FGC Vallvidrera / Tibidabo line (L7)
-    "plaça kennedy":   ["L7 (FGC)"], "avinguda tibidabo": ["L7 (FGC)"],
+    # FGC Vallvidrera / Tibidabo line (L7 / Vallvidrera line)
+    # Stations with station=subway in OSM — these appear correctly
+    # subway_entrance nodes (Gomis, Joaquim Folguera, etc.) are filtered out
+    # so no lookup needed for those
     "peu del funicular": ["L7 (FGC)"], "les planes": ["L7 (FGC)"],
     "la floresta":     ["L7 (FGC)"], "valldoreix": ["L7 (FGC)"],
-    "sant cugat":      ["S1 (FGC)", "S5 (FGC)"], "gomis": ["L7 (FGC)"],
+    "sant cugat":      ["S1 (FGC)", "S5 (FGC)"],
     "baixador de vallvidrera": ["L7 (FGC)"], "vallvidrera superior": ["L7 (FGC)"],
+    # FGC Sarrià / Sant Cugat lines (L6, S1, S5, S2) — near upper Barcelona
+    "el putxet":       ["L6 (FGC)"], "la bonanova":      ["S1 (FGC)", "S5 (FGC)"],
+    "les tres torres": ["S1 (FGC)", "S5 (FGC)"], "sarrià": ["L6 (FGC)", "S1 (FGC)", "S5 (FGC)"],
+    "muntaner":        ["L6 (FGC)"], "gràcia":           ["L6 (FGC)", "S1 (FGC)", "S5 (FGC)"],
+    "provença":        ["L6 (FGC)"],
     # FGC Llobregat-Anoia line
     "pl. espanya":     ["L8 (FGC)", "L1", "L3"], "magòria - la campana": ["L8 (FGC)"],
     "ildefons cerdà":  ["L8 (FGC)"],
@@ -249,7 +256,12 @@ def classify_element(tags: dict) -> str | None:
     if amenity in ["hospital", "clinic"]: return "hospital"
     if leisure in ["park", "garden"]: return "park"
     if highway == "bus_stop": return "bus_stop"
-    if railway in ["station", "subway_entrance"] or station == "subway": return "metro"
+    # Only classify as metro when it's an actual station node (station=subway),
+    # NOT subway_entrance nodes — those are individual door-level entrance nodes
+    # named after their street (e.g. "Gomis", "Joaquim Folguera") which are
+    # confusingly different from the station itself.
+    if station == "subway": return "metro"
+    if railway == "station" and station in ("subway", "light_rail"): return "metro"
     if leisure in ["fitness_centre", "sports_centre"] or amenity == "gym": return "gym"
     if amenity == "library": return "library"
     if amenity in ["arts_centre", "cultural_centre", "community_centre"]: return "cultural_centre"

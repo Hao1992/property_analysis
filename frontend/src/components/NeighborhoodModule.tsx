@@ -107,54 +107,95 @@ export default function NeighborhoodModule({ categories, lat, lng }: Props) {
       {sortedTransit.some(c => c.total_count > 0) && (
         <div>
           <h2 className="text-lg font-semibold mb-1">Public Transport</h2>
-          <p className="text-xs text-gray-400 mb-4">Click a marker to see routes · 500m radius · deduplicated stops</p>
+          <p className="text-xs text-gray-400 mb-4">Click route badge to see all stops · 500m radius</p>
           <TransitMap lat={lat} lng={lng} metro={metro} busStop={busStop} />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-            {sortedTransit.filter(c => c.total_count > 0).map(cat => (
-              <div key={cat.category} className="border border-gray-100 rounded-xl p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl">{CATEGORY_ICONS[cat.category] ?? '🚏'}</span>
-                    <span className="font-medium text-sm">{CATEGORY_LABELS[cat.category] ?? cat.category}</span>
-                  </div>
-                  <CountBadge count={cat.total_count} category={cat.category} />
+
+          <div className="space-y-5 mt-5">
+            {/* Metro — show each station with its line */}
+            {metro && metro.total_count > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-xl">🚇</span>
+                  <span className="font-medium text-sm">Metro / Train</span>
+                  <CountBadge count={metro.total_count} category="metro" />
                 </div>
-                <div className="space-y-2.5">
-                  {cat.top_items.map((item, i) => (
-                    <div key={i} className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium text-gray-800 truncate">{item.name}</p>
-                        {item.routes && item.routes.length > 0 && (
-                          <div className="space-y-0.5 mt-1">
-                            {item.routes.slice(0, 8).map(r => {
-                              const desc = cat.category === 'bus_stop' ? BUS_ROUTE_DESC[r] : null
-                              const routeType = cat.category === 'metro' ? 'subway' : 'bus'
-                              return (
-                                <div key={r} className="flex items-center gap-1.5">
-                                  <button
-                                    onClick={() => setActiveRoute({ ref: r, type: routeType })}
-                                    className={`text-xs px-1.5 py-0.5 rounded font-mono font-bold text-white shrink-0 hover:opacity-80 transition-opacity
-                                      ${cat.category === 'metro' ? 'bg-red-600' : 'bg-blue-600'}`}
-                                    title={`View all stops on route ${r}`}
-                                  >
-                                    {r}
-                                  </button>
-                                  {desc && <span className="text-xs text-gray-500 truncate">{desc}</span>}
-                                </div>
-                              )
-                            })}
-                            {item.routes.length > 8 && (
-                              <span className="text-xs text-gray-400">+{item.routes.length - 8} more routes</span>
-                            )}
-                          </div>
-                        )}
+                <div className="space-y-2">
+                  {metro.top_items.map((item, i) => (
+                    <div key={i} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="flex gap-1 flex-wrap">
+                          {item.routes.map(r => (
+                            <button key={r}
+                              onClick={() => setActiveRoute({ ref: r, type: 'subway' })}
+                              className="text-xs px-1.5 py-0.5 rounded font-mono font-bold text-white bg-red-600 hover:opacity-80"
+                              title={`View all stops on ${r}`}
+                            >{r}</button>
+                          ))}
+                        </div>
+                        <span className="text-sm text-gray-700 truncate">{item.name}</span>
                       </div>
-                      <span className="text-xs text-gray-400 shrink-0 mt-0.5">{item.distance_m}m</span>
+                      <span className="text-xs text-gray-400 shrink-0 ml-2">{item.distance_m}m</span>
                     </div>
                   ))}
                 </div>
               </div>
-            ))}
+            )}
+
+            {/* Bus — unique routes summary + nearest stops */}
+            {busStop && busStop.total_count > 0 && (() => {
+              // Collect all unique routes across all nearby stops
+              const routeToNearest: Map<string, number> = new Map()
+              for (const item of busStop.top_items) {
+                for (const r of (item.routes ?? [])) {
+                  if (!routeToNearest.has(r) || item.distance_m < (routeToNearest.get(r) ?? 9999)) {
+                    routeToNearest.set(r, item.distance_m)
+                  }
+                }
+              }
+              const uniqueRoutes = Array.from(routeToNearest.entries())
+                .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
+
+              return (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-xl">🚌</span>
+                    <span className="font-medium text-sm">Bus routes within 500m</span>
+                    <CountBadge count={busStop.total_count} category="bus_stop" />
+                  </div>
+
+                  {/* Unique routes */}
+                  <div className="space-y-1.5 mb-4">
+                    {uniqueRoutes.map(([r, nearestM]) => {
+                      const desc = BUS_ROUTE_DESC[r]
+                      return (
+                        <div key={r} className="flex items-center gap-2">
+                          <button
+                            onClick={() => setActiveRoute({ ref: r, type: 'bus' })}
+                            className="text-xs px-2 py-1 rounded font-mono font-bold text-white bg-blue-600 hover:bg-blue-700 shrink-0 transition-colors"
+                            title={`View all stops on route ${r}`}
+                          >{r}</button>
+                          <span className="text-sm text-gray-700 flex-1 truncate">{desc ?? r}</span>
+                          <span className="text-xs text-gray-400 shrink-0">nearest {nearestM}m</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* Nearest stops (no route repetition) */}
+                  <div className="border-t border-gray-100 pt-3">
+                    <p className="text-xs text-gray-400 mb-2">Nearest stops</p>
+                    <div className="space-y-1">
+                      {busStop.top_items.slice(0, 4).map((item, i) => (
+                        <div key={i} className="flex items-center justify-between text-xs">
+                          <span className="text-gray-600 truncate">{item.name}</span>
+                          <span className="text-gray-400 shrink-0 ml-2">{item.distance_m}m</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
           </div>
         </div>
       )}
