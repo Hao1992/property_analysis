@@ -60,7 +60,11 @@ export default function Report({ data }: Props) {
       {/* Valuation + Hidden costs */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {data.valuation && (
-          <ValuationModule valuation={data.valuation} listingPrice={undefined} />
+          <ValuationModule
+            valuation={data.valuation}
+            listingPrice={undefined}
+            property={data.property}
+          />
         )}
         <HiddenCostBreakdown data={data.hidden_costs} />
       </div>
@@ -76,7 +80,10 @@ export default function Report({ data }: Props) {
 
       {/* School + Noise */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <SchoolQualityModule data={data.school_quality} />
+        <SchoolQualityModule
+          data={data.school_quality}
+          schoolCategory={data.poi_categories.find(c => c.category === 'school')}
+        />
         <NoiseEcosystem data={data.noise} />
       </div>
 
@@ -84,7 +91,7 @@ export default function Report({ data }: Props) {
       <NeighbourhoodTrajectory data={data.neighbourhood_trajectory} />
 
       {/* POIs */}
-      <NeighborhoodModule categories={data.poi_categories} />
+      <NeighborhoodModule categories={data.poi_categories} lat={data.lat} lng={data.lng} />
 
       <p className="text-xs text-slate-500 text-center pb-4">
         Sources: {data.data_sources.join(' · ')}

@@ -1,8 +1,9 @@
-import { SchoolQualityData } from '../types/analysis';
+import { SchoolQualityData, PoiCategory } from '../types/analysis';
 import SourceBadge from './SourceBadge';
 
 interface Props {
   data: SchoolQualityData;
+  schoolCategory?: PoiCategory;
 }
 
 function ScoreRing({ score }: { score: number }) {
@@ -31,7 +32,8 @@ const LANG_LABELS: Record<string, string> = {
   mixed:   'Mixed',
 };
 
-export default function SchoolQualityModule({ data }: Props) {
+export default function SchoolQualityModule({ data, schoolCategory }: Props) {
+  const otherSchools = (schoolCategory?.top_items ?? []).slice(1) // skip first (already shown as nearest)
   return (
     <div className="bg-slate-800 border border-slate-700 rounded-2xl p-5 space-y-4">
       <h3 className="text-sm font-semibold text-white uppercase tracking-wide">Nearest School</h3>
@@ -72,6 +74,22 @@ export default function SchoolQualityModule({ data }: Props) {
       {!data.nearest_school_m && (
         <p className="text-xs text-slate-500">No school found within 500m.</p>
       )}
+
+      {/* Other nearby schools */}
+      {otherSchools.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-slate-700">
+          <p className="text-xs text-slate-500 mb-2">Other nearby schools</p>
+          <div className="space-y-1.5">
+            {otherSchools.map((s, i) => (
+              <div key={i} className="flex items-center justify-between text-xs">
+                <span className="text-slate-300 truncate max-w-[180px]" title={s.name}>{s.name}</span>
+                <span className="text-slate-500 shrink-0 ml-2">{s.distance_m}m</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <p className="text-xs text-slate-500">Score: distance (40%) · type/funding (20%) · quality rating (40%)</p>
       <SourceBadge sources={[
         { label: 'OpenStreetMap', url: 'https://www.openstreetmap.org/', note: 'school locations & type tags' },

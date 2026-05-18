@@ -106,7 +106,9 @@ function DimPanel({ d, onClose }: { d: DimensionScore; onClose: () => void }) {
           })}
         </div>
       )}
-      <p className="text-slate-500">Weight in composite score: {(d.weight * 100).toFixed(0)}%</p>
+      <p className="text-slate-500">
+        Counts for <span className="text-white font-medium">{(d.weight * 100).toFixed(0)}%</span> of your total score
+      </p>
     </div>
   )
 }

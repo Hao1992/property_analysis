@@ -4,6 +4,42 @@ import os
 
 OVERPASS_URL = os.getenv("OVERPASS_URL", "https://overpass-api.de/api/interpreter")
 
+# Barcelona metro (TMB) and FGC station → line mapping.
+# OSM route_ref tags are often absent for FGC/Tramvia stations; this fills the gap.
+_BCN_TRANSIT_LINES: dict[str, list[str]] = {
+    # TMB Metro L1 (red)
+    "marina":          ["L1"], "clot":         ["L1"], "glòries":       ["L1"],
+    "arc de triomf":   ["L1"], "urquinaona":   ["L1"], "catalunya":     ["L1","L3"],
+    "universitat":     ["L1","L2"], "hospital clínic": ["L5"], "espanya":  ["L1","L3"],
+    # TMB Metro L2 (purple)
+    "sant antoni":     ["L2"], "paral·lel":    ["L2","L3"], "bogatell":  ["L4"],
+    "la pau":          ["L2","L4"], "verneda":  ["L2"],
+    # TMB Metro L3 (green)
+    "lesseps":         ["L3"], "fontana":      ["L3"], "diagonal":      ["L3","L5"],
+    "passeig de gràcia": ["L2","L3","L4"], "liceu": ["L3"], "drassanes": ["L3"],
+    "barceloneta":     ["L4"], "ciutadella / vila olímpica": ["L4"],
+    "vallcarca":       ["L3"], "penitents":    ["L3"], "vall d'hebron": ["L3"],
+    "montbau":         ["L3"], "mundet":       ["L3"], "canyelles":     ["L3"],
+    "roquetes":        ["L3"], "trinitat nova": ["L3","L4"],
+    # TMB Metro L4 (yellow)
+    "jaume i":         ["L4"], "barceloneta":  ["L4"], "poblenou":      ["L4"],
+    "selva de mar":    ["L4"], "el maresme / fòrum": ["L4"],
+    # TMB Metro L5 (blue)
+    "collblanc":       ["L5","L9S"], "badal":  ["L5"], "entença":       ["L5"],
+    "hospital de bellvitge": ["L1"], "pubilla cases": ["L5"],
+    # FGC Vallvidrera / Tibidabo line (L7)
+    "plaça kennedy":   ["L7 (FGC)"], "avinguda tibidabo": ["L7 (FGC)"],
+    "peu del funicular": ["L7 (FGC)"], "les planes": ["L7 (FGC)"],
+    "la floresta":     ["L7 (FGC)"], "valldoreix": ["L7 (FGC)"],
+    "sant cugat":      ["S1 (FGC)", "S5 (FGC)"], "gomis": ["L7 (FGC)"],
+    "baixador de vallvidrera": ["L7 (FGC)"], "vallvidrera superior": ["L7 (FGC)"],
+    # FGC Llobregat-Anoia line
+    "pl. espanya":     ["L8 (FGC)", "L1", "L3"], "magòria - la campana": ["L8 (FGC)"],
+    "ildefons cerdà":  ["L8 (FGC)"],
+    # Tramvia
+    "glòries":         ["T4 (Tram)"],
+}
+
 CATEGORY_MAP = {
     "supermarket":    {"amenity": ["supermarket"], "shop": ["supermarket", "convenience", "grocery"]},
     "restaurant":     {"amenity": ["restaurant", "cafe", "bar", "pub", "nightclub"]},
@@ -83,10 +119,9 @@ out center tags;
         # Collect route_ref lines for transit stops
         routes: list[str] = []
         if category in ("bus_stop", "metro"):
+            import re
             route_ref = tags.get("route_ref", "")
             if route_ref:
-                # BCN OSM uses spaces, semicolons, or commas as separators
-                import re
                 routes = [r.strip() for r in re.split(r'[;,\s]+', route_ref) if r.strip()]
             # Also check against fetched route relations
             stop_name_lower = name.lower()
@@ -94,6 +129,10 @@ out center tags;
                 if any(stop_name_lower in s.lower() for s in stops_in_route):
                     if route_name not in routes:
                         routes.append(route_name)
+            # Apply Barcelona metro/FGC lookup for stations missing route_ref
+            if category == "metro" and not routes:
+                known = _BCN_TRANSIT_LINES.get(stop_name_lower, [])
+                routes = known
 
         result[category].append({
             "name": name,

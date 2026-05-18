@@ -1,8 +1,8 @@
-import type { ValuationData } from '../types/analysis'
+import type { ValuationData, PropertyData } from '../types/analysis'
 import WaterfallChart from './WaterfallChart'
 import SourceBadge from './SourceBadge'
 
-interface Props { valuation: ValuationData; listingPrice?: number }
+interface Props { valuation: ValuationData; listingPrice?: number; property?: PropertyData }
 
 const VERDICT_STYLES: Record<string, { bg: string; text: string; label: string }> = {
   undervalued:             { bg: 'bg-green-50', text: 'text-green-700', label: '🟢 Undervalued' },
@@ -13,8 +13,13 @@ const VERDICT_STYLES: Record<string, { bg: string; text: string; label: string }
 
 const fmt = (n: number) => `€${n.toLocaleString('es-ES')}`
 
-export default function ValuationModule({ valuation, listingPrice }: Props) {
+export default function ValuationModule({ valuation, listingPrice, property }: Props) {
   const style = VERDICT_STYLES[valuation.verdict] ?? VERDICT_STYLES.fair
+
+  const missing: string[] = []
+  if (!property?.surface_m2) missing.push('surface area (using 80m² estimate)')
+  if (!property?.year_built)  missing.push('year built')
+  if (!property?.energy_cert) missing.push('energy certificate (defaulting to D)')
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-6">
@@ -46,12 +51,20 @@ export default function ValuationModule({ valuation, listingPrice }: Props) {
         )}
       </div>
 
-      <div className={`mb-6 px-4 py-3 rounded-lg ${style.bg}`}>
+      <div className={`mb-4 px-4 py-3 rounded-lg ${style.bg}`}>
         <span className={`font-semibold ${style.text}`}>{style.label}</span>
         <span className="text-sm text-gray-500 ml-2">
           Confidence: {(valuation.confidence * 100).toFixed(0)}%
         </span>
       </div>
+
+      {missing.length > 0 && (
+        <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700">
+          <span className="font-semibold">Estimate uses defaults</span> — Catastro didn't return:{' '}
+          {missing.join(', ')}.{' '}
+          Add these in the form above for a more accurate estimate.
+        </div>
+      )}
 
       <WaterfallChart base={valuation.base_value} adjustments={valuation.adjustments} fair={valuation.fair_value} />
       <SourceBadge className="mt-4" sources={[
