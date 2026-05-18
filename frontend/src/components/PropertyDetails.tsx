@@ -14,38 +14,63 @@ const ITE_COLORS: Record<string, string> = {
 }
 
 export default function PropertyDetails({ property }: Props) {
+  const hasAnyData = property.surface_m2 || property.year_built || property.floor != null
+    || property.energy_cert || property.has_lift != null || property.ite_status || property.cadastral_value
+
+  if (!hasAnyData) return null
+
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-6">
-      <h2 className="text-lg font-semibold mb-4">Property Details</h2>
-      <div className="grid grid-cols-3 gap-4 text-sm">
+    <div className="card p-5">
+      <div className="mb-3">
+        <p className="text-xs font-medium uppercase tracking-widest mb-1" style={{ color: 'var(--accent)' }}>From Catastro</p>
+        <h3 className="font-semibold" style={{ color: 'var(--text-main)' }}>Property Details</h3>
+      </div>
+      <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 text-sm">
         {property.surface_m2 && (
-          <div><p className="text-gray-400 text-xs">Surface</p><p className="font-medium">{property.surface_m2} m²</p></div>
+          <div className="bg-stone-50 rounded-xl p-3 border" style={{ borderColor: 'var(--border)' }}>
+            <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Surface</p>
+            <p className="font-semibold" style={{ color: 'var(--text-main)' }}>{property.surface_m2} m²</p>
+          </div>
         )}
         {property.year_built && (
-          <div><p className="text-gray-400 text-xs">Year built</p><p className="font-medium">{property.year_built}</p></div>
+          <div className="bg-stone-50 rounded-xl p-3 border" style={{ borderColor: 'var(--border)' }}>
+            <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Year built</p>
+            <p className="font-semibold" style={{ color: 'var(--text-main)' }}>{property.year_built}</p>
+          </div>
         )}
         {property.floor != null && (
-          <div><p className="text-gray-400 text-xs">Floor</p><p className="font-medium">{property.floor === 0 ? 'Ground' : `F${property.floor}`}</p></div>
+          <div className="bg-stone-50 rounded-xl p-3 border" style={{ borderColor: 'var(--border)' }}>
+            <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Floor</p>
+            <p className="font-semibold" style={{ color: 'var(--text-main)' }}>{property.floor === 0 ? 'Ground' : `F${property.floor}`}</p>
+          </div>
         )}
         {property.energy_cert && (
-          <div>
-            <p className="text-gray-400 text-xs">Energy cert</p>
-            <span className={`inline-block px-2 py-0.5 rounded text-white text-xs font-bold ${ENERGY_COLORS[property.energy_cert] ?? 'bg-gray-400'}`}>
+          <div className="bg-stone-50 rounded-xl p-3 border" style={{ borderColor: 'var(--border)' }}>
+            <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Energy cert</p>
+            <span className={`inline-block px-2 py-0.5 rounded text-white text-xs font-bold ${ENERGY_COLORS[property.energy_cert] ?? 'bg-stone-400'}`}>
               {property.energy_cert}
             </span>
           </div>
         )}
         {property.has_lift != null && (
-          <div><p className="text-gray-400 text-xs">Lift</p><p className="font-medium">{property.has_lift ? 'Yes' : 'No'}</p></div>
+          <div className="bg-stone-50 rounded-xl p-3 border" style={{ borderColor: 'var(--border)' }}>
+            <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Lift</p>
+            <p className="font-semibold" style={{ color: 'var(--text-main)' }}>{property.has_lift ? 'Yes' : 'No'}</p>
+          </div>
         )}
-        {property.ite_status && (
-          <div>
-            <p className="text-gray-400 text-xs">ITE status</p>
-            <p className={`font-medium ${ITE_COLORS[property.ite_status] ?? 'text-gray-600'}`}>{property.ite_status}</p>
+        {property.ite_status && property.ite_status !== 'UNKNOWN' && (
+          <div className="bg-stone-50 rounded-xl p-3 border" style={{ borderColor: 'var(--border)' }}>
+            <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>ITE status</p>
+            <p className={`font-semibold ${ITE_COLORS[property.ite_status] ?? ''}`} style={!ITE_COLORS[property.ite_status] ? { color: 'var(--text-main)' } : undefined}>
+              {property.ite_status}
+            </p>
           </div>
         )}
         {property.cadastral_value && (
-          <div><p className="text-gray-400 text-xs">Cadastral value</p><p className="font-medium">€{property.cadastral_value.toLocaleString()}</p></div>
+          <div className="bg-stone-50 rounded-xl p-3 border" style={{ borderColor: 'var(--border)' }}>
+            <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Cadastral value</p>
+            <p className="font-semibold" style={{ color: 'var(--text-main)' }}>€{property.cadastral_value.toLocaleString()}</p>
+          </div>
         )}
       </div>
     </div>

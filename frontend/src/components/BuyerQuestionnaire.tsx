@@ -20,8 +20,8 @@ function Q<T extends string | boolean>({
   return (
     <div className="space-y-1.5">
       <div>
-        <p className="text-sm font-medium text-slate-200">{label}</p>
-        {hint && <p className="text-xs text-slate-500">{hint}</p>}
+        <p className="text-sm font-medium" style={{ color: 'var(--text-main)' }}>{label}</p>
+        {hint && <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{hint}</p>}
       </div>
       <div className="flex flex-wrap gap-2">
         {opts.map(opt => {
@@ -33,9 +33,13 @@ function Q<T extends string | boolean>({
               onClick={() => onChange(opt.value)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all
                 ${active
-                  ? 'bg-indigo-600 border-indigo-500 text-white'
-                  : 'bg-slate-700 border-slate-600 text-slate-300 hover:border-slate-400'
+                  ? 'text-white border-transparent'
+                  : 'bg-white hover:bg-stone-50'
                 }`}
+              style={active
+                ? { backgroundColor: 'var(--accent)', borderColor: 'var(--accent)' }
+                : { borderColor: 'var(--border)', color: 'var(--text-sub)' }
+              }
             >
               {opt.icon && <span className="mr-1">{opt.icon}</span>}{opt.label}
             </button>
@@ -55,20 +59,21 @@ export default function BuyerQuestionnaire({ value, onChange }: Props) {
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200 transition-colors"
+        className="flex items-center gap-2 text-sm transition-colors hover:opacity-80"
+        style={{ color: 'var(--text-muted)' }}
       >
-        <span className={`transition-transform ${open ? 'rotate-90' : ''}`}>▶</span>
+        <span className={`transition-transform text-xs ${open ? 'rotate-90' : ''}`}>▶</span>
         <span>
           {hasAnswers
             ? `Buyer profile customised (${Object.values(value).filter(v => v !== undefined).length}/8 answered)`
             : 'Customise buyer profile'}
-          <span className="text-xs text-slate-500 ml-1">— affects score weights</span>
+          <span className="text-xs ml-1" style={{ color: 'var(--text-muted)' }}>— affects score weights</span>
         </span>
       </button>
 
       {open && (
-        <div className="bg-slate-800/80 border border-slate-700 rounded-xl p-4 space-y-5">
-          <p className="text-xs text-slate-500">
+        <div className="bg-stone-50 border rounded-xl p-4 space-y-5" style={{ borderColor: 'var(--border)' }}>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
             Your answers adjust which dimensions matter most. Unanswered questions use balanced defaults.
           </p>
 
@@ -164,7 +169,8 @@ export default function BuyerQuestionnaire({ value, onChange }: Props) {
             <button
               type="button"
               onClick={() => onChange({})}
-              className="text-xs text-slate-500 hover:text-red-400 transition-colors"
+              className="text-xs hover:text-red-500 transition-colors"
+              style={{ color: 'var(--text-muted)' }}
             >
               Reset all answers
             </button>

@@ -2,6 +2,90 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Design system: Variant A — Mediterranean Professional ── */
+:root {
+  --bg-page:     #FAFAF8;
+  --bg-card:     #FFFFFF;
+  --border:      #E8E0D5;
+  --text-main:   #1C1917;
+  --text-sub:    #57534E;
+  --text-muted:  #A8A29E;
+  --accent:      #C67C3A;
+  --accent-dark: #A8621E;
+  --shadow-sm:   0 1px 3px rgba(0,0,0,0.05);
+  --shadow-md:   0 1px 3px rgba(0,0,0,0.04), 0 6px 16px rgba(0,0,0,0.07);
+}
+
 body {
-  @apply bg-gray-50 text-gray-900;
+  background-color: var(--bg-page);
+  color: var(--text-main);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-display {
+  font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
+}
+
+/* Base card */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-md);
+}
+
+/* Disclosure card with colored left stripe */
+.disclosure-red    { background: #fff; border: 1px solid #FECACA; border-left: 4px solid #DC2626; border-radius: 10px; box-shadow: var(--shadow-sm); }
+.disclosure-yellow { background: #fff; border: 1px solid #FDE68A; border-left: 4px solid #D97706; border-radius: 10px; box-shadow: var(--shadow-sm); }
+.disclosure-green  { background: #fff; border: 1px solid #BBF7D0; border-left: 4px solid #16A34A; border-radius: 10px; box-shadow: var(--shadow-sm); }
+.disclosure-info   { background: #fff; border: 1px solid #BFDBFE; border-left: 4px solid #2563EB; border-radius: 10px; box-shadow: var(--shadow-sm); }
+
+/* Score number */
+.score-number {
+  font-family: 'Playfair Display', Georgia, serif;
+  color: var(--accent);
+  line-height: 1;
+}
+
+/* Ochre accent button */
+.btn-accent {
+  background-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  border-radius: 10px;
+  padding: 12px 28px;
+  font-size: 15px;
+  transition: background-color 0.15s ease;
+  border: none;
+  cursor: pointer;
+}
+.btn-accent:hover:not(:disabled) { background-color: var(--accent-dark); }
+.btn-accent:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Print / PDF styles ── */
+@media print {
+  @page { margin: 18mm 14mm; size: A4; }
+
+  header, footer, nav,
+  .print\:hidden,
+  button.print\:hidden { display: none !important; }
+
+  body { background: #fff !important; font-size: 11px; }
+
+  .card {
+    box-shadow: none !important;
+    border: 1px solid #E8E0D5 !important;
+    break-inside: avoid;
+    margin-bottom: 8px;
+  }
+
+  .grid { gap: 8px !important; }
+
+  /* Recharts / Leaflet maps — avoid page breaks inside */
+  .recharts-wrapper, .leaflet-container { break-inside: avoid; }
+
+  h2, h3 { break-after: avoid; }
+
+  a { color: inherit; text-decoration: none; }
 }

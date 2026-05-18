@@ -22,26 +22,29 @@ export default function ValuationModule({ valuation, listingPrice, property }: P
   if (!property?.energy_cert) missing.push('energy certificate (defaulting to D)')
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-6">
-      <h2 className="text-lg font-semibold mb-4">Fair Value Estimate</h2>
+    <div className="card p-5 space-y-4">
+      <div>
+        <p className="text-xs font-medium uppercase tracking-widest mb-1" style={{ color: 'var(--accent)' }}>Valuation</p>
+        <h3 className="font-semibold" style={{ color: 'var(--text-main)' }}>Fair Value Estimate</h3>
+      </div>
 
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="text-center p-4 bg-gray-50 rounded-xl">
-          <p className="text-xs text-gray-500 mb-1">Base value</p>
-          <p className="text-xl font-bold text-gray-800">{fmt(valuation.base_value)}</p>
-          <p className="text-xs text-gray-400">{fmt(valuation.fair_value_ppm2)}/m²</p>
+      <div className="grid grid-cols-3 gap-3">
+        <div className="text-center p-3 bg-stone-50 rounded-xl border" style={{ borderColor: 'var(--border)' }}>
+          <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Base value</p>
+          <p className="text-lg font-bold font-display" style={{ color: 'var(--text-main)' }}>{fmt(valuation.base_value)}</p>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{fmt(valuation.fair_value_ppm2)}/m²</p>
         </div>
-        <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-100">
+        <div className="text-center p-3 bg-blue-50 rounded-xl border border-blue-100">
           <p className="text-xs text-blue-600 mb-1">Fair value</p>
-          <p className="text-xl font-bold text-blue-700">{fmt(valuation.fair_value)}</p>
+          <p className="text-lg font-bold font-display text-blue-700">{fmt(valuation.fair_value)}</p>
           <p className="text-xs text-blue-400">
             {fmt(valuation.fair_value_low)} – {fmt(valuation.fair_value_high)}
           </p>
         </div>
         {listingPrice && (
-          <div className={`text-center p-4 rounded-xl ${style.bg}`}>
+          <div className={`text-center p-3 rounded-xl ${style.bg}`}>
             <p className={`text-xs mb-1 ${style.text}`}>Listing price</p>
-            <p className={`text-xl font-bold ${style.text}`}>{fmt(listingPrice)}</p>
+            <p className={`text-lg font-bold font-display ${style.text}`}>{fmt(listingPrice)}</p>
             {valuation.vs_listing_pct != null && (
               <p className={`text-xs ${style.text}`}>
                 {valuation.vs_listing_pct > 0 ? '+' : ''}{valuation.vs_listing_pct.toFixed(1)}% vs fair
@@ -51,15 +54,15 @@ export default function ValuationModule({ valuation, listingPrice, property }: P
         )}
       </div>
 
-      <div className={`mb-4 px-4 py-3 rounded-lg ${style.bg}`}>
+      <div className={`px-4 py-3 rounded-lg ${style.bg}`}>
         <span className={`font-semibold ${style.text}`}>{style.label}</span>
-        <span className="text-sm text-gray-500 ml-2">
+        <span className="text-sm ml-2" style={{ color: 'var(--text-muted)' }}>
           Confidence: {(valuation.confidence * 100).toFixed(0)}%
         </span>
       </div>
 
       {missing.length > 0 && (
-        <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700">
+        <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700">
           <span className="font-semibold">Estimate uses defaults</span> — Catastro didn't return:{' '}
           {missing.join(', ')}.{' '}
           Add these in the form above for a more accurate estimate.

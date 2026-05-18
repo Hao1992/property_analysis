@@ -17,13 +17,16 @@ function tipColor(tip: string): string {
 
 export default function NegotiationTips({ tips }: Props) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-6">
-      <h2 className="text-lg font-semibold mb-4">Negotiation Tips</h2>
+    <div className="card p-5 space-y-4">
+      <div>
+        <p className="text-xs font-medium uppercase tracking-widest mb-1" style={{ color: 'var(--accent)' }}>Before You Sign</p>
+        <h3 className="font-semibold" style={{ color: 'var(--text-main)' }}>Negotiation Tips</h3>
+      </div>
       <div className="space-y-3">
         {tips.map((tip, i) => (
           <div key={i} className={`flex gap-3 p-4 rounded-xl border ${tipColor(tip)}`}>
             <span className="text-lg shrink-0">{tipIcon(tip)}</span>
-            <p className="text-sm text-gray-700">{tip}</p>
+            <p className="text-sm" style={{ color: 'var(--text-sub)' }}>{tip}</p>
           </div>
         ))}
       </div>

@@ -17,22 +17,42 @@ import DisclosureSection from '../components/DisclosureSection'
 interface Props { data: AnalyzeResponse }
 
 export default function Report({ data }: Props) {
+  const handlePrint = () => {
+    window.print()
+  }
+
   return (
-    <div className="space-y-5">
-      {/* Address header */}
-      <div className={`border rounded-2xl p-5 ${data.geocode_confidence === 'low' ? 'bg-yellow-950 border-yellow-700' : 'bg-slate-800 border-slate-700'}`}>
-        <p className="text-xs text-slate-400 mb-1">Analysis for</p>
-        <h2 className="text-base font-semibold text-white leading-snug">{data.address}</h2>
+    <div className="space-y-5" id="report-root">
+      {/* Address header + PDF button */}
+      <div className={`card p-5 ${data.geocode_confidence === 'low' ? 'bg-amber-50 border-amber-200' : ''}`}>
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Analysis for</p>
+            <h2 className="text-base font-semibold leading-snug" style={{ color: 'var(--text-main)' }}>{data.address}</h2>
+          </div>
+          <button
+            onClick={handlePrint}
+            className="shrink-0 flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border transition-all hover:opacity-80 print:hidden"
+            style={{ borderColor: 'var(--border)', color: 'var(--text-sub)' }}
+            title="Print or save as PDF"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Save PDF
+          </button>
+        </div>
+
         {data.geocode_warning && (
-          <div className="mt-3 flex items-start gap-2 bg-yellow-900/50 border border-yellow-700 rounded-lg px-3 py-2">
-            <span className="text-yellow-400 text-sm shrink-0">⚠️</span>
-            <p className="text-xs text-yellow-200 leading-relaxed">
+          <div className="mt-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            <span className="text-amber-500 text-sm shrink-0">⚠</span>
+            <p className="text-xs text-amber-700 leading-relaxed">
               <span className="font-semibold">Address mismatch: </span>{data.geocode_warning}
             </p>
           </div>
         )}
-        <div className="flex gap-4 mt-2 text-xs text-slate-500">
-          <span>ID: {data.request_id.slice(0, 8)}</span>
+        <div className="flex gap-4 mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+          <span>Report ID: {data.request_id.slice(0, 8)}</span>
         </div>
       </div>
 
@@ -93,8 +113,8 @@ export default function Report({ data }: Props) {
       {/* POIs */}
       <NeighborhoodModule categories={data.poi_categories} lat={data.lat} lng={data.lng} />
 
-      <p className="text-xs text-slate-500 text-center pb-4">
-        Sources: {data.data_sources.join(' · ')}
+      <p className="text-xs text-center pb-4" style={{ color: 'var(--text-muted)' }}>
+        Data sources: {data.data_sources.join(' · ')}
       </p>
     </div>
   )

@@ -1,7 +1,8 @@
 import asyncio
+import os
 import uuid
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
 from models.request import AnalyzeRequest, CompareRequest
 from models.response import (
@@ -18,6 +19,8 @@ from services import ai_narrative, disclosures
 from scoring import engine, valuation
 from scoring.hidden_costs import estimate_hidden_costs
 from utils.cache import cached
+from utils.rate_limiter import check_rate_limit, get_client_ip
+from utils import analytics
 
 router = APIRouter()
 
@@ -221,7 +224,15 @@ async def _run_full_analysis(
 # ─── endpoints ──────────────────────────────────────────────────────────────
 
 @router.post("/analyze", response_model=AnalyzeResponse)
-async def analyze(req: AnalyzeRequest):
+async def analyze(req: AnalyzeRequest, request: Request):
+    ip = get_client_ip(request)
+    allowed, remaining = await check_rate_limit(ip)
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail="You have used all 5 free analyses for today. Come back tomorrow for more.",
+        )
+
     user_answers_json = req.user_answers.model_dump_json() if req.user_answers else None
     data = await _run_full_analysis(
         req.address, req.listing_price, req.buyer_profile,
@@ -262,8 +273,20 @@ async def analyze(req: AnalyzeRequest):
         if any(p.get("google_rating") is not None for p in pois[:3])
     )
 
+    request_id = str(uuid.uuid4())
+    analytics.log_analysis(
+        ip=ip,
+        address=geo["display_name"],
+        score=score_data["composite"],
+        disclosures_count=len(data.get("disclosures", [])),
+        request_id=request_id,
+        district=data.get("district", ""),
+        listing_price=req.listing_price,
+        buyer_profile=req.buyer_profile,
+    )
+
     return AnalyzeResponse(
-        request_id=str(uuid.uuid4()),
+        request_id=request_id,
         address=geo["display_name"],
         lat=lat, lng=lng,
         geocode_confidence=geo.get("geocode_confidence", "high"),
@@ -400,3 +423,22 @@ async def compare(req: CompareRequest):
             winner_by_dimension=narr.get("winner_by_dimension", {}),
         ),
     )
+
+
+@router.get("/admin/analytics")
+async def get_analytics(token: str = ""):
+    expected = os.getenv("ANALYTICS_TOKEN", "")
+    if not expected or token != expected:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return {
+        "summary": analytics.get_summary(),
+        "entries": analytics.get_all(),
+    }
+
+
+@router.get("/admin/usage")
+async def get_usage_summary(token: str = ""):
+    expected = os.getenv("ANALYTICS_TOKEN", "")
+    if not expected or token != expected:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return analytics.get_summary()

@@ -74,10 +74,13 @@ export default function AddressInput({ onSubmit, loading }: Props) {
     })
   }
 
+  const inputCls = "w-full px-4 py-3 bg-stone-50 border rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-amber-300/50 focus:border-amber-300"
+  const labelCls = "block text-sm font-medium mb-1"
+
   return (
-    <form onSubmit={handleSubmit} className="bg-slate-800 border border-slate-700 rounded-2xl p-6 space-y-4">
+    <form onSubmit={handleSubmit} className="card p-6 space-y-5">
       <div className="relative">
-        <label className="block text-sm font-medium text-slate-300 mb-1">Property address</label>
+        <label className={labelCls} style={{ color: 'var(--text-sub)' }}>Property address</label>
         <input
           type="text"
           value={address}
@@ -85,17 +88,19 @@ export default function AddressInput({ onSubmit, loading }: Props) {
           onBlur={() => setTimeout(() => setShowSugg(false), 150)}
           onFocus={() => suggestions.length > 0 && setShowSugg(true)}
           placeholder="e.g. Carrer de Mallorca 401, Barcelona"
-          className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-sm"
+          className={inputCls}
+          style={{ borderColor: 'var(--border)', color: 'var(--text-main)' }}
           required
           autoComplete="off"
         />
         {showSugg && suggestions.length > 0 && (
-          <ul className="absolute z-50 w-full mt-1 bg-slate-800 border border-slate-600 rounded-xl shadow-xl overflow-hidden">
+          <ul className="absolute z-50 w-full mt-1 bg-white border rounded-xl shadow-xl overflow-hidden" style={{ borderColor: 'var(--border)' }}>
             {suggestions.map((s, i) => (
               <li
                 key={i}
                 onMouseDown={() => { setAddress(s); setSuggestions([]); setShowSugg(false) }}
-                className="px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700 cursor-pointer border-b border-slate-700 last:border-0 truncate"
+                className="px-4 py-2.5 text-sm cursor-pointer border-b last:border-0 hover:bg-stone-50 truncate"
+                style={{ color: 'var(--text-main)', borderColor: 'var(--border)' }}
                 title={s}
               >
                 {s}
@@ -107,8 +112,8 @@ export default function AddressInput({ onSubmit, loading }: Props) {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-1">
-            Listing price (€) <span className="text-slate-500 font-normal">optional</span>
+          <label className={labelCls} style={{ color: 'var(--text-sub)' }}>
+            Listing price (€) <span className="font-normal text-xs" style={{ color: 'var(--text-muted)' }}>optional</span>
           </label>
           <input
             type="number"
@@ -116,13 +121,14 @@ export default function AddressInput({ onSubmit, loading }: Props) {
             onChange={e => setListingPrice(e.target.value)}
             placeholder="e.g. 450000"
             min={0}
-            className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-sm"
+            className={inputCls}
+            style={{ borderColor: 'var(--border)', color: 'var(--text-main)' }}
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-1">
-            Year built <span className="text-slate-500 font-normal">optional</span>
+          <label className={labelCls} style={{ color: 'var(--text-sub)' }}>
+            Year built <span className="font-normal text-xs" style={{ color: 'var(--text-muted)' }}>optional</span>
           </label>
           <input
             type="number"
@@ -131,13 +137,14 @@ export default function AddressInput({ onSubmit, loading }: Props) {
             placeholder="e.g. 1975"
             min={1800}
             max={new Date().getFullYear()}
-            className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-sm"
+            className={inputCls}
+            style={{ borderColor: 'var(--border)', color: 'var(--text-main)' }}
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-1">
-            Floor <span className="text-slate-500 font-normal">optional (affects noise)</span>
+          <label className={labelCls} style={{ color: 'var(--text-sub)' }}>
+            Floor <span className="font-normal text-xs" style={{ color: 'var(--text-muted)' }}>optional</span>
           </label>
           <input
             type="number"
@@ -146,16 +153,18 @@ export default function AddressInput({ onSubmit, loading }: Props) {
             placeholder="e.g. 3"
             min={0}
             max={50}
-            className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-sm"
+            className={inputCls}
+            style={{ borderColor: 'var(--border)', color: 'var(--text-main)' }}
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-1">Buyer profile</label>
+          <label className={labelCls} style={{ color: 'var(--text-sub)' }}>Buyer profile</label>
           <select
             value={profile}
             onChange={e => setProfile(e.target.value as AnalyzeRequest['buyer_profile'])}
-            className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-sm"
+            className={inputCls}
+            style={{ borderColor: 'var(--border)', color: 'var(--text-main)' }}
           >
             {PROFILES.map(p => (
               <option key={p.value} value={p.value}>{p.label}</option>
@@ -169,19 +178,20 @@ export default function AddressInput({ onSubmit, loading }: Props) {
         <button
           type="button"
           onClick={() => setShowPropDetails(o => !o)}
-          className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200 transition-colors"
+          className="flex items-center gap-2 text-sm transition-colors hover:opacity-80"
+          style={{ color: 'var(--text-muted)' }}
         >
-          <span className={`transition-transform ${showPropDetails ? 'rotate-90' : ''}`}>▶</span>
+          <span className={`transition-transform text-xs ${showPropDetails ? 'rotate-90' : ''}`}>▶</span>
           <span>
             Property details{' '}
-            <span className="text-xs text-slate-500">— surface area, energy cert, condition — improves valuation accuracy</span>
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>— surface area, energy cert, condition</span>
           </span>
         </button>
 
         {showPropDetails && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-slate-800/60 border border-slate-700 rounded-xl p-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-stone-50 border rounded-xl p-4" style={{ borderColor: 'var(--border)' }}>
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-sub)' }}>
                 Surface area (m²)
               </label>
               <input
@@ -190,17 +200,19 @@ export default function AddressInput({ onSubmit, loading }: Props) {
                 onChange={e => setSurfaceM2(e.target.value)}
                 placeholder="e.g. 85"
                 min={20} max={1000}
-                className="w-full px-3 py-2.5 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                className="w-full px-3 py-2.5 bg-white border rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-300/50 focus:border-amber-300"
+                style={{ borderColor: 'var(--border)', color: 'var(--text-main)' }}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-sub)' }}>
                 Energy certificate
               </label>
               <select
                 value={energyCert}
                 onChange={e => setEnergyCert(e.target.value)}
-                className="w-full px-3 py-2.5 bg-slate-700 border border-slate-600 rounded-xl text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                className="w-full px-3 py-2.5 bg-white border rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-300/50 focus:border-amber-300"
+                style={{ borderColor: 'var(--border)', color: 'var(--text-main)' }}
               >
                 <option value="">Unknown</option>
                 {['A','B','C','D','E','F','G'].map(c => (
@@ -209,13 +221,14 @@ export default function AddressInput({ onSubmit, loading }: Props) {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-sub)' }}>
                 Condition
               </label>
               <select
                 value={condition}
                 onChange={e => setCondition(e.target.value as AnalyzeRequest['condition'] | '')}
-                className="w-full px-3 py-2.5 bg-slate-700 border border-slate-600 rounded-xl text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                className="w-full px-3 py-2.5 bg-white border rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-300/50 focus:border-amber-300"
+                style={{ borderColor: 'var(--border)', color: 'var(--text-main)' }}
               >
                 <option value="">Unknown</option>
                 <option value="renovated">Fully renovated</option>
@@ -232,7 +245,8 @@ export default function AddressInput({ onSubmit, loading }: Props) {
       <button
         type="submit"
         disabled={loading || !address.trim()}
-        className="w-full py-3 px-6 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold rounded-xl transition-colors text-sm"
+        className="w-full py-3.5 px-6 disabled:opacity-50 text-white font-semibold rounded-xl transition-all text-sm hover:opacity-90 active:scale-[0.99]"
+        style={{ backgroundColor: 'var(--accent)' }}
       >
         {loading ? (
           <span className="flex items-center justify-center gap-2">
@@ -242,7 +256,7 @@ export default function AddressInput({ onSubmit, loading }: Props) {
             </svg>
             Analysing… (may take 30–60s)
           </span>
-        ) : 'Analyse property'}
+        ) : 'Analyse this property →'}
       </button>
     </form>
   )

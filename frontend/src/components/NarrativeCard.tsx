@@ -6,56 +6,58 @@ interface Props {
   composite: number;
 }
 
-const GRADE_COLORS: Record<string, string> = {
-  'Excellent buy':          'bg-emerald-500',
-  'Good buy':               'bg-green-500',
-  'Proceed with caution':   'bg-amber-500',
-  'High risk — reconsider': 'bg-red-500',
+const GRADE_CONFIG: Record<string, { bg: string; text: string; border: string }> = {
+  'Excellent buy':          { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+  'Good buy':               { bg: 'bg-green-50',   text: 'text-green-700',   border: 'border-green-200' },
+  'Proceed with caution':   { bg: 'bg-amber-50',   text: 'text-amber-700',   border: 'border-amber-200' },
+  'High risk — reconsider': { bg: 'bg-red-50',     text: 'text-red-700',     border: 'border-red-200' },
 };
 
 export default function NarrativeCard({ narrative, grade, composite }: Props) {
-  const badgeColor = GRADE_COLORS[grade] ?? 'bg-slate-500';
+  const cfg = GRADE_CONFIG[grade] ?? { bg: 'bg-stone-50', text: 'text-stone-700', border: 'border-stone-200' };
 
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 space-y-5">
+    <div className="card p-6 space-y-5">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1">
-          <p className="text-xs text-slate-400 mb-1">AI Verdict</p>
-          <h2 className="text-xl font-semibold text-white leading-snug">
+          <p className="text-xs font-medium uppercase tracking-widest mb-2" style={{ color: 'var(--accent)' }}>
+            AI Verdict
+          </p>
+          <h2 className="font-display text-xl font-semibold leading-snug" style={{ color: 'var(--text-main)' }}>
             {narrative.verdict}
           </h2>
         </div>
         <div className="flex flex-col items-center shrink-0">
-          <span className="text-4xl font-bold text-white">{composite}</span>
-          <span className={`text-xs font-medium text-white px-3 py-1 rounded-full mt-1 ${badgeColor}`}>
+          <span className="score-number text-5xl font-bold">{composite}</span>
+          <span className={`text-xs font-semibold px-3 py-1 rounded-full mt-2 border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
             {grade}
           </span>
         </div>
       </div>
 
       {/* Summary */}
-      <p className="text-slate-300 text-sm leading-relaxed">{narrative.summary}</p>
+      <p className="text-sm leading-relaxed" style={{ color: 'var(--text-sub)' }}>{narrative.summary}</p>
 
       {/* Risks + Positives */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <p className="text-xs font-semibold text-red-400 uppercase tracking-wide mb-2">Key Risks</p>
-          <ul className="space-y-1">
+          <p className="text-xs font-semibold text-red-600 uppercase tracking-wide mb-2">Key Risks</p>
+          <ul className="space-y-1.5">
             {narrative.key_risks.map((r, i) => (
-              <li key={i} className="flex gap-2 text-sm text-slate-300">
-                <span className="text-red-400 mt-0.5 shrink-0">▲</span>
+              <li key={i} className="flex gap-2 text-sm" style={{ color: 'var(--text-sub)' }}>
+                <span className="text-red-500 shrink-0 mt-0.5">▲</span>
                 <span>{r}</span>
               </li>
             ))}
           </ul>
         </div>
         <div>
-          <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-2">Positives</p>
-          <ul className="space-y-1">
+          <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide mb-2">Positives</p>
+          <ul className="space-y-1.5">
             {narrative.key_positives.map((p, i) => (
-              <li key={i} className="flex gap-2 text-sm text-slate-300">
-                <span className="text-emerald-400 mt-0.5 shrink-0">✓</span>
+              <li key={i} className="flex gap-2 text-sm" style={{ color: 'var(--text-sub)' }}>
+                <span className="text-emerald-500 shrink-0 mt-0.5">✓</span>
                 <span>{p}</span>
               </li>
             ))}
@@ -65,14 +67,14 @@ export default function NarrativeCard({ narrative, grade, composite }: Props) {
 
       {/* Negotiation angle */}
       {narrative.negotiation_angle && (
-        <div className="bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-3">
-          <p className="text-xs text-amber-400 font-semibold uppercase tracking-wide mb-1">Negotiation Angle</p>
-          <p className="text-sm text-slate-200">{narrative.negotiation_angle}</p>
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+          <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-1">Negotiation Angle</p>
+          <p className="text-sm text-amber-800">{narrative.negotiation_angle}</p>
         </div>
       )}
 
-      <p className="text-xs text-slate-500">
-        Generated by Claude (subscription) · {narrative.generated_by}
+      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+        Generated by Claude AI · {narrative.generated_by}
       </p>
     </div>
   );

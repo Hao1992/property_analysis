@@ -1,46 +1,47 @@
 import { NeighbourhoodTrajectoryData } from '../types/analysis';
 import SourceBadge from './SourceBadge';
 
-interface Props {
-  data: NeighbourhoodTrajectoryData;
-}
+interface Props { data: NeighbourhoodTrajectoryData; }
 
-const TREND_CONFIG = {
-  rising:   { label: 'Rising',   icon: '↑', color: 'text-emerald-400', bg: 'bg-emerald-900/30 border-emerald-800' },
-  stable:   { label: 'Stable',   icon: '→', color: 'text-slate-300',   bg: 'bg-slate-700/50 border-slate-600' },
-  declining: { label: 'Declining', icon: '↓', color: 'text-red-400',    bg: 'bg-red-900/30 border-red-800' },
+const TREND = {
+  rising:   { label: 'Rising',   icon: '↑', color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200' },
+  stable:   { label: 'Stable',   icon: '→', color: 'text-stone-700',   bg: 'bg-stone-50  border-stone-200' },
+  declining:{ label: 'Declining',icon: '↓', color: 'text-red-700',     bg: 'bg-red-50    border-red-200' },
 };
 
 export default function NeighbourhoodTrajectory({ data }: Props) {
-  const cfg = TREND_CONFIG[data.trend] ?? TREND_CONFIG.stable;
+  const cfg = TREND[data.trend] ?? TREND.stable;
 
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-2xl p-5 space-y-4">
-      <h3 className="text-sm font-semibold text-white uppercase tracking-wide">Neighbourhood Trajectory</h3>
+    <div className="card p-5 space-y-4">
+      <div>
+        <p className="text-xs font-medium uppercase tracking-widest mb-1" style={{ color: 'var(--accent)' }}>Area Trend</p>
+        <h3 className="font-semibold" style={{ color: 'var(--text-main)' }}>Neighbourhood Trajectory</h3>
+      </div>
 
       <div className={`flex items-center gap-3 rounded-xl px-4 py-3 border ${cfg.bg}`}>
-        <span className={`text-3xl font-bold ${cfg.color}`}>{cfg.icon}</span>
+        <span className={`font-display text-3xl font-bold ${cfg.color}`}>{cfg.icon}</span>
         <div>
-          <p className={`text-lg font-semibold ${cfg.color}`}>{cfg.label}</p>
-          <p className="text-xs text-slate-400">Trend score: {Math.round(data.trend_score)}/100</p>
+          <p className={`text-lg font-semibold font-display ${cfg.color}`}>{cfg.label}</p>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Trend score: {Math.round(data.trend_score)}/100</p>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4 text-center">
-        <div className="bg-slate-700/50 rounded-xl py-3">
-          <p className="text-xl font-bold text-white">{data.new_businesses_12m}</p>
-          <p className="text-xs text-slate-400">New businesses (12 mo)</p>
+        <div className="bg-stone-50 rounded-xl py-3 border" style={{ borderColor: 'var(--border)' }}>
+          <p className="font-display text-xl font-bold" style={{ color: 'var(--text-main)' }}>{data.new_businesses_12m}</p>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>New businesses (12 mo)</p>
         </div>
-        <div className="bg-slate-700/50 rounded-xl py-3">
-          <p className="text-xl font-bold text-white">{data.renovation_permits_12m}</p>
-          <p className="text-xs text-slate-400">Renovation permits (12 mo)</p>
+        <div className="bg-stone-50 rounded-xl py-3 border" style={{ borderColor: 'var(--border)' }}>
+          <p className="font-display text-xl font-bold" style={{ color: 'var(--text-main)' }}>{data.renovation_permits_12m}</p>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Renovation permits (12 mo)</p>
         </div>
       </div>
 
-      <p className="text-xs text-slate-500">New business licences + renovation permits in district over 12 months.</p>
+      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>New BCN activity licences + major works permits in district · higher = more activity</p>
       <SourceBadge sources={[
         { label: 'BCN Activitats Comercials', url: 'https://opendata-ajuntament.barcelona.cat/data/ca/dataset/activitats-comercials-icub', note: 'business licence registry' },
-        { label: 'BCN Llicències d\'Obres', url: 'https://opendata-ajuntament.barcelona.cat/data/ca/dataset/llicencies-obres-majors', note: 'major works permits' },
+        { label: "BCN Llicències d'Obres", url: 'https://opendata-ajuntament.barcelona.cat/data/ca/dataset/llicencies-obres-majors', note: 'major works permits' },
       ]} />
     </div>
   );

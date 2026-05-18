@@ -19,13 +19,13 @@ export default function WaterfallChart({ base, adjustments, fair }: Props) {
 
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-medium text-gray-700">How we reached the fair value</h3>
+      <h3 className="text-sm font-medium" style={{ color: 'var(--text-sub)' }}>How we reached the fair value</h3>
 
       {/* Base row */}
       <div className="flex items-center gap-3 py-1.5">
-        <div className="w-44 shrink-0 text-xs text-gray-500">Base (median ₠/m²)</div>
+        <div className="w-44 shrink-0 text-xs" style={{ color: 'var(--text-muted)' }}>Base (median €/m²)</div>
         <div className="flex-1" />
-        <div className="text-sm font-semibold text-gray-700 w-28 text-right">{fmt(base)}</div>
+        <div className="text-sm font-semibold w-28 text-right" style={{ color: 'var(--text-sub)' }}>{fmt(base)}</div>
       </div>
 
       {/* Adjustment rows */}
@@ -35,23 +35,17 @@ export default function WaterfallChart({ base, adjustments, fair }: Props) {
         const isPos   = adj.impact_eur >= 0
         return (
           <div key={i} className="flex items-center gap-3 py-0.5">
-            <div className="w-44 shrink-0 text-xs text-gray-600 truncate" title={adj.name}>{adj.name}</div>
+            <div className="w-44 shrink-0 text-xs truncate" style={{ color: 'var(--text-sub)' }} title={adj.name}>{adj.name}</div>
             <div className="flex-1 flex items-center gap-1">
               {!isPos && <div className="flex-1 flex justify-end">
-                <div
-                  className="h-3 rounded-l bg-red-400"
-                  style={{ width: `${barPct}%` }}
-                />
+                <div className="h-2.5 rounded-l bg-red-400" style={{ width: `${barPct}%` }} />
               </div>}
-              <div className="w-px h-4 bg-gray-300 shrink-0" />
+              <div className="w-px h-4 bg-stone-200 shrink-0" />
               {isPos && <div className="flex-1">
-                <div
-                  className="h-3 rounded-r bg-green-400"
-                  style={{ width: `${barPct}%` }}
-                />
+                <div className="h-2.5 rounded-r bg-emerald-400" style={{ width: `${barPct}%` }} />
               </div>}
             </div>
-            <div className={`text-xs font-medium w-28 text-right ${isPos ? 'text-green-600' : 'text-red-600'}`}>
+            <div className={`text-xs font-medium w-28 text-right ${isPos ? 'text-emerald-600' : 'text-red-600'}`}>
               {isPos ? '+' : ''}{fmt(adj.impact_eur)} ({isPos ? '+' : ''}{pct.toFixed(1)}%)
             </div>
           </div>
@@ -59,7 +53,7 @@ export default function WaterfallChart({ base, adjustments, fair }: Props) {
       })}
 
       {/* Divider */}
-      <div className="border-t border-gray-200 my-1" />
+      <div className="border-t my-1" style={{ borderColor: 'var(--border)' }} />
 
       {/* Fair value row */}
       <div className="flex items-center gap-3 py-1.5 bg-blue-50 rounded-lg px-2">
