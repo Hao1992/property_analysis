@@ -14,17 +14,19 @@ app = FastAPI(
     version="0.1.0",
 )
 
-_ALLOWED_ORIGINS = [
-    o.strip()
-    for o in os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
-    if o.strip()
-]
+_raw_origins = os.getenv("ALLOWED_ORIGINS", "*")
+_ALLOWED_ORIGINS = (
+    ["*"]
+    if _raw_origins.strip() == "*"
+    else [o.strip() for o in _raw_origins.split(",") if o.strip()]
+)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_ALLOWED_ORIGINS,
-    allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type", "Authorization"],
+    allow_credentials=_ALLOWED_ORIGINS != ["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "Accept"],
 )
 
 app.include_router(health_router)
