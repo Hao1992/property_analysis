@@ -11,11 +11,11 @@ from models.response import (
     PoiCategory, PoiItem,
     AirbnbSaturationData, SchoolQualityData, SchoolEntry, NoiseData,
     HiddenCostsData, NeighbourhoodTrajectoryData, NarrativeData,
-    DisclosureItem,
+    DisclosureItem, MarketComparables, ComparableListing,
 )
 from services import geocoder, overpass, google_places, catastro, ine, open_data_bcn
 from services import airbnb_saturation, school_quality, noise_ecosystem, neighbourhood_trajectory
-from services import ai_narrative, disclosures
+from services import ai_narrative, disclosures, fotocasa_scraper
 from scoring import engine, valuation
 from scoring.hidden_costs import estimate_hidden_costs
 from utils.cache import cached
@@ -150,6 +150,20 @@ async def _run_full_analysis(
         neighbourhood_trajectory.get_neighbourhood_trajectory(lat, lng, district),
     )
 
+    # Step 1b: Market comparables (parallel, non-blocking — failure just omits the section)
+    try:
+        surface_for_comp = (
+            surface_m2_override
+            or (prop_data.get("surface_m2") if prop_data else None)
+        )
+        comparables_data = await fotocasa_scraper.get_market_comparables(
+            district=district,
+            surface_m2=surface_for_comp,
+            listing_price=listing_price,
+        )
+    except Exception:
+        comparables_data = None
+
     # Apply manual overrides when Catastro returns null
     overrides: dict = {}
     if year_built_override is not None and prop_data.get("year_built") is None:
@@ -231,9 +245,10 @@ async def _run_full_analysis(
         "geo":              geo,
         "district":         district,
         "census_section":   census_section,
-        "negotiation_tips": _generate_negotiation_tips(valuation_data, score_data, prop_data, language=language),
-        "narrative":        narrative_data,
-        "listing_price":    listing_price,
+        "negotiation_tips":  _generate_negotiation_tips(valuation_data, score_data, prop_data, language=language),
+        "narrative":         narrative_data,
+        "listing_price":     listing_price,
+        "comparables":       comparables_data,
     }
 
 
@@ -267,8 +282,9 @@ async def analyze(req: AnalyzeRequest, request: Request):
     trajectory_data = data["neighbourhood_trajectory"]
     hidden_costs_data = data["hidden_costs"]
     score_data    = data["score"]
-    narrative_data = data["narrative"]
-    geo           = data["geo"]
+    narrative_data   = data["narrative"]
+    comparables_data = data.get("comparables")
+    geo              = data["geo"]
 
     prop_response = PropertyData(
         address_normalized=prop_data.get("address_normalized") or geo["display_name"],
@@ -306,6 +322,7 @@ async def analyze(req: AnalyzeRequest, request: Request):
         request_id=request_id,
         address=geo["display_name"],
         lat=lat, lng=lng,
+        listing_price=req.listing_price,
         geocode_confidence=geo.get("geocode_confidence", "high"),
         geocode_warning=geo.get("geocode_warning"),
         property=prop_response,
@@ -333,6 +350,21 @@ async def analyze(req: AnalyzeRequest, request: Request):
             confidence=valuation_data["confidence"],
             vs_listing_pct=valuation_data.get("vs_listing_pct"),
             verdict=valuation_data.get("verdict", "unknown"),
+        ),
+        market_comparables=(
+            MarketComparables(
+                median_ppm2=comparables_data["median_ppm2"],
+                p25_ppm2=comparables_data["p25_ppm2"],
+                p75_ppm2=comparables_data["p75_ppm2"],
+                listings=[ComparableListing(**l) for l in comparables_data.get("listings", [])],
+                count=comparables_data.get("count"),
+                source=comparables_data["source"],
+                district=comparables_data["district"],
+                size_range=comparables_data["size_range"],
+                asking_ppm2=comparables_data.get("asking_ppm2"),
+                position=comparables_data.get("position"),
+            )
+            if comparables_data else None
         ),
         hidden_costs=HiddenCostsData(**hidden_costs_data),
         score=CompositeScore(

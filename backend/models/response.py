@@ -140,6 +140,25 @@ class CompositeScore(BaseModel):
     dimensions: list[DimensionScore]
 
 
+class ComparableListing(BaseModel):
+    price: int
+    size: int
+    ppm2: int
+
+
+class MarketComparables(BaseModel):
+    median_ppm2: int
+    p25_ppm2: int
+    p75_ppm2: int
+    listings: list[ComparableListing] = []
+    count: Optional[int] = None
+    source: str                         # "Fotocasa" | "district statistics"
+    district: str
+    size_range: str
+    asking_ppm2: Optional[int] = None
+    position: Optional[str] = None     # well_below | below | within_range | above | well_above
+
+
 class DisclosureItem(BaseModel):
     id: str
     severity: str                    # red | yellow | green | info
@@ -154,6 +173,7 @@ class AnalyzeResponse(BaseModel):
     address: str
     lat: float
     lng: float
+    listing_price: Optional[float] = None
     geocode_confidence: str = "high"       # high | low
     geocode_warning: Optional[str] = None  # shown in UI when confidence is low
     property: PropertyData
@@ -165,6 +185,7 @@ class AnalyzeResponse(BaseModel):
     noise: NoiseData
     neighbourhood_trajectory: NeighbourhoodTrajectoryData
     valuation: ValuationData
+    market_comparables: Optional[MarketComparables] = None
     hidden_costs: HiddenCostsData
     score: CompositeScore
     negotiation_tips: list[str]

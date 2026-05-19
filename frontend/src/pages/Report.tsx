@@ -85,8 +85,9 @@ export default function Report({ data }: Props) {
         {data.valuation && (
           <ValuationModule
             valuation={data.valuation}
-            listingPrice={undefined}
+            listingPrice={data.listing_price}
             property={data.property}
+            comparables={data.market_comparables}
           />
         )}
         <HiddenCostBreakdown data={data.hidden_costs} />

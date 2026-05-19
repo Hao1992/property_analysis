@@ -138,6 +138,25 @@ export interface CompositeScore {
   dimensions: DimensionScore[];
 }
 
+export interface ComparableListing {
+  price: number;
+  size: number;
+  ppm2: number;
+}
+
+export interface MarketComparables {
+  median_ppm2: number;
+  p25_ppm2: number;
+  p75_ppm2: number;
+  listings: ComparableListing[];
+  count?: number;
+  source: string;
+  district: string;
+  size_range: string;
+  asking_ppm2?: number;
+  position?: 'well_below' | 'below' | 'within_range' | 'above' | 'well_above';
+}
+
 export interface DisclosureItem {
   id: string;
   severity: 'red' | 'yellow' | 'green' | 'info';
@@ -152,6 +171,7 @@ export interface AnalyzeResponse {
   address: string;
   lat: number;
   lng: number;
+  listing_price?: number;
   geocode_confidence: 'high' | 'low';
   geocode_warning?: string;
   property: PropertyData;
@@ -163,6 +183,7 @@ export interface AnalyzeResponse {
   noise: NoiseData;
   neighbourhood_trajectory: NeighbourhoodTrajectoryData;
   valuation: ValuationData;
+  market_comparables?: MarketComparables;
   hidden_costs: HiddenCostsData;
   score: CompositeScore;
   negotiation_tips: string[];
