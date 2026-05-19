@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Analytics } from '@vercel/analytics/react'
 import type { AnalyzeResponse, AnalyzeRequest } from './types/analysis'
 import { analyzeProperty } from './api/client'
 import { useLanguage } from './contexts/LanguageContext'
@@ -47,6 +48,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-page)' }}>
+      <Analytics />
 
       {/* Navigation */}
       <header className="bg-white border-b sticky top-0 z-50 print:hidden" style={{ borderColor: 'var(--border)' }}>
