@@ -54,10 +54,10 @@ export default function App() {
       <header className="bg-white border-b sticky top-0 z-50" style={{ borderColor: 'var(--border)' }}>
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center font-display font-bold text-white text-sm" style={{ backgroundColor: 'var(--accent)' }}>P</div>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center font-display font-bold text-white text-sm" style={{ backgroundColor: 'var(--accent)' }}>B</div>
             <div>
-              <h1 className="text-base font-semibold font-display" style={{ color: 'var(--text-main)' }}>PropInsight Barcelona</h1>
-              <p className="text-xs hidden sm:block" style={{ color: 'var(--text-muted)' }}>Know before you buy</p>
+              <h1 className="text-base font-semibold font-display" style={{ color: 'var(--text-main)' }}>Beyond Price</h1>
+              <p className="text-xs hidden sm:block" style={{ color: 'var(--text-muted)' }}>Barcelona · Know before you buy</p>
             </div>
           </div>
 
@@ -108,15 +108,15 @@ export default function App() {
             {/* Hero */}
             <div className="text-center mb-10 pt-6">
               <p className="text-xs font-medium tracking-widest uppercase mb-4" style={{ color: 'var(--accent)' }}>
-                Barcelona Property Intelligence
+                Barcelona · Free Beta
               </p>
               <h2 className="font-display text-4xl sm:text-5xl font-bold mb-4 leading-tight" style={{ color: 'var(--text-main)' }}>
-                Know before you<br />
-                <span className="italic" style={{ color: 'var(--accent)' }}>buy in Barcelona</span>
+                Beyond the price tag.<br />
+                <span className="italic" style={{ color: 'var(--accent)' }}>Know before you buy.</span>
               </h2>
               <p className="text-lg leading-relaxed mb-2" style={{ color: 'var(--text-sub)' }}>
-                Get a complete legal, financial, and neighbourhood due-diligence report
-                for any Barcelona property — in under 60 seconds.
+                Enter any Barcelona address. Get the full picture — hidden costs,
+                structural risks, noise, Airbnb pressure, fair value — in 60 seconds.
               </p>
               <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                 What estate agents don't tell you. What portals can't show you.
@@ -179,6 +179,7 @@ export default function App() {
       {!result && tab === 'analyze' && (
         <footer className="border-t mt-16 py-8" style={{ borderColor: 'var(--border)' }}>
           <div className="max-w-5xl mx-auto px-6 text-center">
+            <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Beyond Price — Barcelona Property Intelligence</p>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
               Data: Catastro · INE · OpenStreetMap · Inside Airbnb · Open Data BCN · AI: Claude
             </p>
