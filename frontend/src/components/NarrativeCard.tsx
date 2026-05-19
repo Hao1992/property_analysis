@@ -1,4 +1,5 @@
 import { NarrativeData } from '../types/analysis';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface Props {
   narrative: NarrativeData;
@@ -14,7 +15,9 @@ const GRADE_CONFIG: Record<string, { bg: string; text: string; border: string }>
 };
 
 export default function NarrativeCard({ narrative, grade, composite }: Props) {
+  const { t } = useLanguage()
   const cfg = GRADE_CONFIG[grade] ?? { bg: 'bg-stone-50', text: 'text-stone-700', border: 'border-stone-200' };
+  const gradeLabel = (t.sections.narrative.grades as Record<string, string>)[grade] ?? grade;
 
   return (
     <div className="card p-6 space-y-5">
@@ -31,7 +34,7 @@ export default function NarrativeCard({ narrative, grade, composite }: Props) {
         <div className="flex flex-col items-center shrink-0">
           <span className="score-number text-5xl font-bold">{composite}</span>
           <span className={`text-xs font-semibold px-3 py-1 rounded-full mt-2 border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
-            {grade}
+            {gradeLabel}
           </span>
         </div>
       </div>
@@ -42,7 +45,7 @@ export default function NarrativeCard({ narrative, grade, composite }: Props) {
       {/* Risks + Positives */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <p className="text-xs font-semibold text-red-600 uppercase tracking-wide mb-2">Key Risks</p>
+          <p className="text-xs font-semibold text-red-600 uppercase tracking-wide mb-2">{t.sections.narrative.risks}</p>
           <ul className="space-y-1.5">
             {narrative.key_risks.map((r, i) => (
               <li key={i} className="flex gap-2 text-sm" style={{ color: 'var(--text-sub)' }}>
@@ -53,7 +56,7 @@ export default function NarrativeCard({ narrative, grade, composite }: Props) {
           </ul>
         </div>
         <div>
-          <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide mb-2">Positives</p>
+          <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide mb-2">{t.sections.narrative.positives}</p>
           <ul className="space-y-1.5">
             {narrative.key_positives.map((p, i) => (
               <li key={i} className="flex gap-2 text-sm" style={{ color: 'var(--text-sub)' }}>
@@ -68,7 +71,7 @@ export default function NarrativeCard({ narrative, grade, composite }: Props) {
       {/* Negotiation angle */}
       {narrative.negotiation_angle && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-          <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-1">Negotiation Angle</p>
+          <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-1">{t.sections.narrative.negotiation}</p>
           <p className="text-sm text-amber-800">{narrative.negotiation_angle}</p>
         </div>
       )}

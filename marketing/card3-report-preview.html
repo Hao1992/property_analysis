@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1080px; height: 1080px; overflow: hidden;
+    font-family: 'Inter', sans-serif;
+    background: #F0EDE8;
+  }
+
+  .wrap {
+    width: 100%; height: 100%;
+    padding: 40px 44px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* Top brand strip */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .brand {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px; font-weight: 700; color: #1C1917;
+  }
+  .brand em { color: #C67C3A; font-style: italic; }
+  .badge {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.1em;
+    text-transform: uppercase; color: #C67C3A;
+    border: 1px solid #C67C3A; border-radius: 100px; padding: 4px 12px;
+  }
+
+  /* Address bar */
+  .address-bar {
+    background: #fff; border: 1px solid #E8E0D5; border-radius: 12px;
+    padding: 12px 18px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .addr-label { font-size: 10px; color: #A8A29E; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.08em; }
+  .addr-text  { font-size: 14px; font-weight: 600; color: #1C1917; }
+  .score-chip {
+    font-family: 'Playfair Display', serif;
+    font-size: 32px; font-weight: 700; color: #C67C3A;
+    display: flex; align-items: baseline; gap: 4px;
+  }
+  .score-chip span { font-family: 'Inter', sans-serif; font-size: 13px; color: #A8A29E; font-weight: 400; }
+
+  /* Grid */
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; flex: 1; }
+
+  .card {
+    background: #fff; border: 1px solid #E8E0D5; border-radius: 14px;
+    padding: 18px 20px;
+  }
+
+  .card-label {
+    font-size: 9px; font-weight: 700; letter-spacing: 0.15em;
+    text-transform: uppercase; color: #C67C3A; margin-bottom: 4px;
+  }
+  .card-title { font-size: 14px; font-weight: 600; color: #1C1917; margin-bottom: 14px; }
+
+  /* Disclosure cards */
+  .disc { border-radius: 9px; padding: 10px 14px; margin-bottom: 8px; display: flex; gap: 10px; align-items: flex-start; }
+  .disc.red    { background: #fff; border: 1px solid #FECACA; border-left: 4px solid #DC2626; }
+  .disc.yellow { background: #fff; border: 1px solid #FDE68A; border-left: 4px solid #D97706; }
+  .disc.green  { background: #fff; border: 1px solid #BBF7D0; border-left: 4px solid #16A34A; }
+  .disc-icon { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+  .disc.red    .disc-icon { background: #FEE2E2; color: #DC2626; }
+  .disc.yellow .disc-icon { background: #FEF3C7; color: #D97706; }
+  .disc.green  .disc-icon { background: #D1FAE5; color: #16A34A; }
+  .disc-body { flex: 1; }
+  .disc-title { font-size: 12px; font-weight: 600; color: #1C1917; margin-bottom: 2px; }
+  .disc-sub   { font-size: 11px; color: #78716C; line-height: 1.4; }
+
+  /* Bar score */
+  .bar-row { margin-bottom: 11px; }
+  .bar-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+  .bar-label { font-size: 12px; color: #57534E; }
+  .bar-val   { font-size: 12px; font-weight: 600; }
+  .bar-track { height: 6px; background: #F5F0EB; border-radius: 10px; overflow: hidden; }
+  .bar-fill  { height: 100%; border-radius: 10px; }
+  .green-val { color: #16A34A; } .amber-val { color: #D97706; } .red-val { color: #DC2626; }
+  .green-bar { background: #22C55E; } .amber-bar { background: #F59E0B; } .red-bar { background: #EF4444; }
+
+  /* Cost grid */
+  .cost-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .cost-item { background: #FAFAF8; border: 1px solid #E8E0D5; border-radius: 9px; padding: 10px 12px; }
+  .cost-item-label { font-size: 10px; color: #A8A29E; margin-bottom: 3px; }
+  .cost-item-val   { font-size: 16px; font-weight: 700; color: #1C1917; font-family: 'Playfair Display', serif; }
+  .cost-item-sub   { font-size: 10px; color: #A8A29E; }
+
+  /* Valuation */
+  .val-row { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+  .val-box { flex: 1; background: #FAFAF8; border: 1px solid #E8E0D5; border-radius: 9px; padding: 10px 12px; text-align: center; }
+  .val-box.highlight { background: #FFF7ED; border-color: #FDBA74; }
+  .val-box-label { font-size: 10px; color: #A8A29E; margin-bottom: 2px; }
+  .val-box-val   { font-size: 16px; font-weight: 700; font-family: 'Playfair Display', serif; color: #1C1917; }
+  .val-box.highlight .val-box-val { color: #C67C3A; }
+  .overpriced-badge {
+    background: #FEF3C7; border: 1px solid #FDE68A; border-radius: 8px;
+    padding: 8px 12px; font-size: 11px; color: #92400E;
+  }
+  .overpriced-badge strong { font-weight: 700; }
+
+  /* Airbnb */
+  .airbnb-big { text-align: center; margin-bottom: 12px; }
+  .airbnb-risk { font-size: 28px; font-weight: 700; color: #DC2626; font-family: 'Playfair Display', serif; }
+  .airbnb-sub  { font-size: 11px; color: #A8A29E; }
+  .airbnb-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .airbnb-stat { background: #FEF2F2; border-radius: 8px; padding: 8px; text-align: center; }
+  .airbnb-stat-val { font-size: 18px; font-weight: 700; color: #DC2626; font-family: 'Playfair Display', serif; }
+  .airbnb-stat-label { font-size: 10px; color: #7F1D1D; }
+
+  /* Bottom URL */
+  .bottom-url {
+    text-align: center; font-size: 12px; color: #A8A29E;
+    padding-top: 6px; border-top: 1px solid #E8E0D5;
+  }
+  .bottom-url strong { color: #C67C3A; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="brand">Beyond <em>Price</em></div>
+    <div class="badge">Sample Report · Barcelona</div>
+  </div>
+
+  <div class="address-bar">
+    <div>
+      <div class="addr-label">Property analysed</div>
+      <div class="addr-text">Carrer de Mallorca 401, Eixample, Barcelona</div>
+    </div>
+    <div class="score-chip">72 <span>/100</span></div>
+  </div>
+
+  <div class="grid">
+
+    <!-- Card: Pre-purchase disclosures -->
+    <div class="card">
+      <div class="card-label">Must Know Before Signing</div>
+      <div class="card-title">Pre-Purchase Disclosures</div>
+
+      <div class="disc red">
+        <div class="disc-icon">⚠</div>
+        <div class="disc-body">
+          <div class="disc-title">Aluminosis era building (1969)</div>
+          <div class="disc-sub">Construcción 1960–1975 — request structural certificate before arras</div>
+        </div>
+      </div>
+      <div class="disc yellow">
+        <div class="disc-icon">!</div>
+        <div class="disc-body">
+          <div class="disc-title">High Airbnb saturation</div>
+          <div class="disc-sub">38% of units estimated as tourist apartments. Affects community votes &amp; noise.</div>
+        </div>
+      </div>
+      <div class="disc yellow">
+        <div class="disc-icon">!</div>
+        <div class="disc-body">
+          <div class="disc-title">Energy upgrade required by 2033</div>
+          <div class="disc-sub">Energy cert E → estimated upgrade cost €12,000–€22,000</div>
+        </div>
+      </div>
+      <div class="disc green">
+        <div class="disc-icon">✓</div>
+        <div class="disc-body">
+          <div class="disc-title">Well-connected — 4 metro lines</div>
+          <div class="disc-sub">L2, L3, L4, L5 within 350m. Daily commute score: 91/100</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card: Hidden costs -->
+    <div class="card">
+      <div class="card-label">Annual Ownership</div>
+      <div class="card-title">Hidden Monthly Costs</div>
+
+      <div class="cost-grid">
+        <div class="cost-item">
+          <div class="cost-item-label">IBI property tax</div>
+          <div class="cost-item-val">€142</div>
+          <div class="cost-item-sub">per month (est.)</div>
+        </div>
+        <div class="cost-item">
+          <div class="cost-item-label">Community fee</div>
+          <div class="cost-item-val">€95</div>
+          <div class="cost-item-sub">building maintenance</div>
+        </div>
+        <div class="cost-item">
+          <div class="cost-item-label">Utilities estimate</div>
+          <div class="cost-item-val">€130</div>
+          <div class="cost-item-sub">electricity, water, gas</div>
+        </div>
+        <div class="cost-item" style="background:#FEF3C7; border-color:#FDE68A;">
+          <div class="cost-item-label" style="color:#92400E;">Derrama risk</div>
+          <div class="cost-item-val" style="color:#D97706;">€60</div>
+          <div class="cost-item-sub" style="color:#92400E;">provision · MEDIUM risk</div>
+        </div>
+      </div>
+
+      <div style="background:#1C1917; border-radius: 10px; padding: 12px 16px; margin-top: 12px; display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 12px; color: #A8A29E;">Total monthly (excl. mortgage)</span>
+        <span style="font-size: 22px; font-weight: 700; color: #C67C3A; font-family: 'Playfair Display', serif;">€427</span>
+      </div>
+    </div>
+
+    <!-- Card: Noise + Safety -->
+    <div class="card">
+      <div class="card-label">Liveability</div>
+      <div class="card-title">Noise &amp; Safety</div>
+
+      <div class="bar-row">
+        <div class="bar-head"><span class="bar-label">Daytime noise</span><span class="bar-val green-val">88/100</span></div>
+        <div class="bar-track"><div class="bar-fill green-bar" style="width:88%"></div></div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-head"><span class="bar-label">Night noise (bars &amp; clubs)</span><span class="bar-val amber-val">52/100</span></div>
+        <div class="bar-track"><div class="bar-fill amber-bar" style="width:52%"></div></div>
+      </div>
+      <div style="font-size: 11px; color: #78716C; margin-bottom: 14px;">20 bar/pub venues within 500m</div>
+
+      <div class="bar-row">
+        <div class="bar-head"><span class="bar-label">Theft rate</span><span class="bar-val amber-val">58/100</span></div>
+        <div class="bar-track"><div class="bar-fill amber-bar" style="width:58%"></div></div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-head"><span class="bar-label">Night safety</span><span class="bar-val amber-val">61/100</span></div>
+        <div class="bar-track"><div class="bar-fill amber-bar" style="width:61%"></div></div>
+      </div>
+      <div style="font-size: 11px; color: #A8A29E; margin-top: 4px;">Eixample district · 2024 BCN Open Data</div>
+    </div>
+
+    <!-- Card: Airbnb + Fair Value -->
+    <div class="card">
+      <div class="card-label">Market Intelligence</div>
+      <div class="card-title">Airbnb Pressure &amp; Fair Value</div>
+
+      <div class="airbnb-stats" style="margin-bottom: 12px;">
+        <div class="airbnb-stat">
+          <div class="airbnb-stat-val">38%</div>
+          <div class="airbnb-stat-label">Est. this building</div>
+        </div>
+        <div class="airbnb-stat">
+          <div class="airbnb-stat-val">14</div>
+          <div class="airbnb-stat-label">Within 100m</div>
+        </div>
+        <div class="airbnb-stat">
+          <div class="airbnb-stat-val">183</div>
+          <div class="airbnb-stat-label">Within 500m</div>
+        </div>
+      </div>
+
+      <div style="font-size: 10px; background: #FEF2F2; border-radius: 8px; padding: 8px 10px; color: #7F1D1D; margin-bottom: 12px;">
+        ⚠ All tourist licences expire Nov 2028. Verify building community rules before signing.
+      </div>
+
+      <div class="val-row">
+        <div class="val-box">
+          <div class="val-box-label">Fair value</div>
+          <div class="val-box-val">€412,000</div>
+        </div>
+        <div class="val-box highlight">
+          <div class="val-box-label">Listed price</div>
+          <div class="val-box-val">€468,000</div>
+        </div>
+      </div>
+      <div class="overpriced-badge">
+        <strong>🟡 Listed 13.6% above fair value</strong> — open negotiations at €412K
+      </div>
+    </div>
+
+  </div>
+
+  <div class="bottom-url">
+    <strong>hsproperty-analysis.vercel.app</strong> · Free beta · Barcelona addresses only · 5 reports/day
+  </div>
+</div>
+</body>
+</html>

@@ -1,3 +1,5 @@
+import { useLanguage } from '../contexts/LanguageContext';
+
 interface Props { tips: string[] }
 
 function tipIcon(tip: string): string {
@@ -16,11 +18,12 @@ function tipColor(tip: string): string {
 }
 
 export default function NegotiationTips({ tips }: Props) {
+  const { t } = useLanguage()
   return (
     <div className="card p-5 space-y-4">
       <div>
-        <p className="text-xs font-medium uppercase tracking-widest mb-1" style={{ color: 'var(--accent)' }}>Before You Sign</p>
-        <h3 className="font-semibold" style={{ color: 'var(--text-main)' }}>Negotiation Tips</h3>
+        <p className="text-xs font-medium uppercase tracking-widest mb-1" style={{ color: 'var(--accent)' }}>{t.sections.negotiation.label}</p>
+        <h3 className="font-semibold" style={{ color: 'var(--text-main)' }}>{t.sections.negotiation.title}</h3>
       </div>
       <div className="space-y-3">
         {tips.map((tip, i) => (

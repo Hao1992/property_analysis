@@ -192,6 +192,7 @@ export interface AnalyzeRequest {
   surface_m2?: number;
   energy_cert?: string;
   condition?: 'renovated' | 'good' | 'needs_work';
+  language?: string;
 }
 
 export interface CompareAnalysis {

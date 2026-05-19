@@ -16,11 +16,29 @@ import subprocess
 import anthropic
 
 _BUYER_PROFILE_CONTEXT = {
-    "balanced":  "a balanced buyer weighing all factors equally",
-    "family":    "a family with children — school quality and safety are the top priorities",
-    "investor":  "a property investor focused on rental yield and capital appreciation",
-    "retiree":   "a retiree prioritising quiet streets, accessibility, and proximity to medical care",
-    "expat":     "an international buyer unfamiliar with Spanish property quirks, legal requirements, and hidden costs",
+    "en": {
+        "balanced":  "a balanced buyer weighing all factors equally",
+        "family":    "a family with children — school quality and safety are the top priorities",
+        "investor":  "a property investor focused on rental yield and capital appreciation",
+        "retiree":   "a retiree prioritising quiet streets, accessibility, and proximity to medical care",
+        "expat":     "an international buyer unfamiliar with Spanish property quirks, legal requirements, and hidden costs",
+    },
+    "zh": {
+        "balanced":  "综合考量各方面因素的购房者",
+        "family":    "有孩子的家庭——学校质量和治安安全是首要考量",
+        "investor":  "关注租金回报和资本增值的房产投资者",
+        "retiree":   "注重安静街区、无障碍设施和医疗配套的退休养老型购房者",
+        "expat":     "对西班牙房产规则、法律要求和隐性成本不熟悉的外籍国际买家",
+    },
+}
+
+_LANGUAGE_INSTRUCTIONS = {
+    "en": "Write in English.",
+    "zh": (
+        "请用简体中文写作。所有输出必须是中文，包括 verdict、summary、key_risks、"
+        "key_positives 和 negotiation_angle。verdict 为10-15个汉字的简短结论。"
+        "negotiation_angle 是买家可以直接对卖家说的一句具体议价话术。"
+    ),
 }
 
 _SYSTEM = """You are a transparent property buying advisor in Spain.
@@ -32,7 +50,6 @@ Rules:
 - If something is a serious red flag, say so clearly — do not soften it.
 - key_risks must be actionable ("Request ITE report before signing arras", not just "building is old").
 - negotiation_angle must be one concrete sentence the buyer can say to the seller.
-- Write in English unless the buyer profile context says otherwise.
 - Output strict JSON only, no code fences, no preamble.
 
 CRITICAL rules about missing data:
@@ -207,18 +224,36 @@ def _build_analysis_context(data: dict) -> str:
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
-def generate_narrative(analysis_data: dict, buyer_profile: str = "balanced") -> dict:
-    profile_ctx = _BUYER_PROFILE_CONTEXT.get(buyer_profile, _BUYER_PROFILE_CONTEXT["balanced"])
+def generate_narrative(
+    analysis_data: dict,
+    buyer_profile: str = "balanced",
+    language: str = "en",
+) -> dict:
+    lang = language if language in ("en", "zh") else "en"
+    profiles = _BUYER_PROFILE_CONTEXT.get(lang, _BUYER_PROFILE_CONTEXT["en"])
+    profile_ctx = profiles.get(buyer_profile, profiles["balanced"])
+    lang_instruction = _LANGUAGE_INSTRUCTIONS.get(lang, _LANGUAGE_INSTRUCTIONS["en"])
+
     user = (
         f"Buyer profile: {profile_ctx}\n\n"
         f"Property: {analysis_data.get('address', 'Unknown')}\n\n"
         f"Analysis data:\n{_build_analysis_context(analysis_data)}\n\n"
+        f"{lang_instruction}\n\n"
         "Generate the plain-language verdict JSON."
     )
 
-    result = _call_claude(_SYSTEM, user, max_tokens=1200)
+    result = _call_claude(_SYSTEM, user, max_tokens=1500)
 
     if "_error" in result:
+        if lang == "zh":
+            return {
+                "verdict": "分析完成——AI叙述暂不可用",
+                "summary": "所有数据已成功收集，AI叙述生成失败：" + result["_error"],
+                "key_risks": [],
+                "key_positives": [],
+                "negotiation_angle": "请参考上方各项评分进行议价。",
+                "generated_by": "error-fallback",
+            }
         return {
             "verdict": "Analysis complete — narrative unavailable",
             "summary": "All data was collected successfully. AI narrative generation failed: " + result["_error"],

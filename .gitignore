@@ -23,3 +23,5 @@ frontend/.vite/
 
 # Poetry
 poetry.lock
+.vercel
+.gstack/

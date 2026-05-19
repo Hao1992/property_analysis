@@ -1,4 +1,5 @@
 import type { ValuationAdjustment as Adjustment } from '../types/analysis'
+import { useLanguage } from '../contexts/LanguageContext'
 
 interface Props {
   base: number
@@ -9,6 +10,8 @@ interface Props {
 const fmt = (n: number) => `€${Math.round(n).toLocaleString('es-ES')}`
 
 export default function WaterfallChart({ base, adjustments, fair }: Props) {
+  const { t } = useLanguage()
+
   // Only show adjustments with meaningful impact
   const significant = adjustments.filter(a => Math.abs(a.impact_eur) > 10)
 
@@ -19,11 +22,11 @@ export default function WaterfallChart({ base, adjustments, fair }: Props) {
 
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-medium" style={{ color: 'var(--text-sub)' }}>How we reached the fair value</h3>
+      <h3 className="text-sm font-medium" style={{ color: 'var(--text-sub)' }}>{t.sections.valuation.waterfall}</h3>
 
       {/* Base row */}
       <div className="flex items-center gap-3 py-1.5">
-        <div className="w-44 shrink-0 text-xs" style={{ color: 'var(--text-muted)' }}>Base (median €/m²)</div>
+        <div className="w-44 shrink-0 text-xs" style={{ color: 'var(--text-muted)' }}>{t.sections.valuation.base} (median €/m²)</div>
         <div className="flex-1" />
         <div className="text-sm font-semibold w-28 text-right" style={{ color: 'var(--text-sub)' }}>{fmt(base)}</div>
       </div>

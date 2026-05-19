@@ -20,6 +20,7 @@ def generate_disclosures(
     school_data: dict,
     listing_price: float | None = None,
     buyer_profile: str | None = None,
+    language: str = "en",
 ) -> list[dict]:
     items: list[dict] = []
 
@@ -36,7 +37,250 @@ def generate_disclosures(
     # Sort: red first, then yellow, then green/info
     _ORDER = {"red": 0, "yellow": 1, "green": 2, "info": 3}
     items.sort(key=lambda x: _ORDER.get(x["severity"], 99))
+
+    if language == "zh":
+        items = _translate_zh(items, prop_data, airbnb_data, noise_data,
+                              hidden_costs_data, listing_price)
     return items
+
+
+def _translate_zh(
+    items: list[dict],
+    prop_data: dict,
+    airbnb_data: dict,
+    noise_data: dict,
+    hidden_costs_data: dict,
+    listing_price: float | None,
+) -> list[dict]:
+    """Replace English disclosure text with Chinese equivalents."""
+    year = prop_data.get("year_built")
+    ite  = prop_data.get("ite_status", "UNKNOWN")
+    derrama = hidden_costs_data.get("derrama_risk_label", "low")
+    pct = airbnb_data.get("tourist_pct_building")
+    count_100m = airbnb_data.get("tourist_count_100m", 0)
+    count_500m = airbnb_data.get("tourist_count_500m", 0)
+    risk = airbnb_data.get("risk_label", "low")
+    bars  = noise_data.get("bars_clubs_500m", 0)
+    nightclubs = noise_data.get("nightclubs_500m", 0)
+    night = noise_data.get("night_noise_score", 100)
+
+    cadastral = prop_data.get("cadastral_value")
+    price = listing_price or (cadastral / 0.5 if cadastral else None)
+    itp = int(price * 0.10) if price else None
+    notary = int(price * 0.015) if price else None
+    lawyer = int(price * 0.01) if price else None
+    total_low = itp + notary if (itp and notary) else None
+    total_high = total_low + lawyer if (total_low and lawyer) else None
+
+    annual_irnr = round(cadastral * 0.011) if cadastral else None
+
+    zh_map: dict[str, dict] = {
+        "transaction_costs": {
+            "title": (
+                f"购房税费约 €{total_low:,}–€{total_high:,}，需额外准备"
+                if total_low and total_high
+                else "购房税费约为房价的12–14%，需额外准备"
+            ),
+            "detail": (
+                f"在加泰罗尼亚购买二手房，买家须支付：10% 产权转让税（ITP）"
+                + (f"约 €{itp:,}" if itp else "")
+                + f"、公证及土地登记费约 1.5%"
+                + (f"（€{notary:,}）" if notary else "")
+                + "、律师费约 1%（建议聘请）。"
+                "大多数外籍买家低估了这部分费用，往往多付 €2–4万。"
+            ),
+            "action": "报价前确认总预算已包含这部分税费，而非事后补充。",
+        },
+        "airbnb_saturation": {
+            "title": (
+                f"本楼约 {pct:.0f}% 的单元为注册旅游公寓"
+                if pct and pct > 0
+                else (
+                    "本楼未发现注册旅游公寓"
+                    if pct == 0
+                    else f"100米内有 {count_100m} 套 Airbnb 房源"
+                )
+            ),
+            "detail": (
+                f"500米范围内共有 {count_500m} 套旅游公寓。"
+                "巴塞罗那已通过法规，所有旅游公寓牌照须于2028年11月前归还。"
+                "在此之前：短租邻居频繁更换、楼宇损耗加速、业主大会决议难以形成多数。"
+                "2028年后：旅游公寓将全面停止，居住品质有望提升，但短租收益也将消失。"
+            ),
+            "action": (
+                "签约前确认楼栋业主大会是否已通过禁止旅游出租的决议（楼规高于个人牌照）。"
+                if pct and pct > 5 else None
+            ),
+        },
+        "building_era_risk": (
+            {
+                "title": f"建于 {year} 年：铝水泥（aluminosis）高风险建筑",
+                "detail": (
+                    "1960–1975年间建造的巴塞罗那建筑大量使用铝水泥，"
+                    "这种材料会随时间降解并削弱结构构件，外观无法判断。"
+                    "巴塞罗那已有多栋此类建筑被拆除或进行了高成本修缮。"
+                ),
+                "action": (
+                    "签约前务必委托独立结构工程师出具检测报告（ITE或技术报告），"
+                    "不要依赖卖方提供的检测。"
+                ),
+            }
+            if year and 1960 <= year <= 1975
+            else {
+                "title": f"建于 {year} 年：1960年前老建筑——请核实结构状况",
+                "detail": (
+                    "1960年前的建筑可能存在老旧电路、铅管，缺乏隔热设施。"
+                    "部分为文保建筑，翻新有限制。请核实当前ITE（建筑技术检查）状态。"
+                ),
+                "action": "向卖方或楼栋管理员索取最新的ITE报告。",
+            }
+            if year and year < 1960
+            else {
+                "title": f"建于 {year} 年：可能含石棉材料",
+                "detail": (
+                    "1975–1990年建筑可能在隔热层、地板砖或管道中含有石棉。"
+                    "稳定状态下的石棉不构成健康风险，翻新施工时才需处理。"
+                ),
+                "action": "如计划翻新，施工前请委托专业机构进行石棉检测。",
+            }
+            if year and 1975 < year < 1990
+            else {
+                "title": f"建于 {year} 年：1990年后建筑，结构风险较低",
+                "detail": (
+                    "1990年后的建筑符合现代抗震标准，不受铝水泥或石棉问题影响。"
+                    "请确认物业管理费中包含维修储备金（fondo de reserva）。"
+                ),
+                "action": None,
+            }
+        ),
+        "community_debt": {
+            "title": "前业主欠缴的费用，法律上由你承担",
+            "detail": (
+                "西班牙法律规定，前业主未缴的IBI房产税和物业管理费，"
+                "在产权过户后由新买家承担——最多追溯4年IBI税和当年物业费。"
+                + {
+                    "high": "本楼的维修摊派风险评级为【高】，可能面临较大金额的业主大会临时摊派（€5,000–€40,000/户）。",
+                    "medium": "本楼维修摊派风险为中等，未来几年内可能出现临时摊派。",
+                    "low": "根据现有数据，维修摊派风险较低。",
+                }.get(derrama, "")
+            ),
+            "action": (
+                "签约前向楼栋管理员索取债务证明（certificado de deudas de la comunidad），"
+                "并要求查看最近一期已缴清的IBI收据。"
+            ),
+        },
+        "ite_status": (
+            {
+                "title": "本楼建筑技术检查（ITE）结果为【不合格】",
+                "detail": (
+                    "本楼的ITE（建筑技术检查）已发现存在问题，"
+                    "可能面临强制整改施工——费用由全体业主分摊。"
+                    "购房后你将共同承担这笔费用。"
+                ),
+                "action": (
+                    "索取完整的ITE报告，了解具体整改内容、估算费用及截止日期，"
+                    "再决定是否出价。"
+                ),
+            }
+            if ite == "DESFAVORABLE"
+            else {
+                "title": "本楼ITE检查状态无法确认",
+                "detail": (
+                    f"该{year}年楼龄的建筑应定期接受ITE检查，"
+                    "但无法从公开数据确认当前状态。"
+                ),
+                "action": "向卖方或楼栋管理员询问最近一次ITE报告。",
+            }
+        ),
+        "nonresident_tax": {
+            "title": (
+                f"非居民税：即使空置也需每年缴纳约 €{annual_irnr:,}"
+                if annual_irnr
+                else "非居民须每年缴纳IRNR税，即使房产空置"
+            ),
+            "detail": (
+                (
+                    f"根据地籍估值（€{int(cadastral):,}），预计IRNR = "
+                    f"€{annual_irnr:,}/年（地籍估值 × 1.1%）。"
+                )
+                if annual_irnr
+                else ""
+            ) + (
+                "此税适用于所有非西班牙税务居民，无论房产出租还是空置均须缴纳，"
+                "且与IBI房产税分开计算，常被外籍买家忽视。"
+            ),
+            "action": "购房前咨询西班牙税务顾问了解年度税务义务。购房后30天内注册税务代理人（representante fiscal）。",
+        },
+        "noise_reality": {
+            "title": (
+                f"噪音风险高：500米内有 {bars} 家酒吧/夜店，其中 {nightclubs} 家夜总会"
+                if night < 40 or bars > 10 or nightclubs > 2
+                else f"噪音环境中等：500米内有 {bars} 家酒吧"
+            ),
+            "detail": (
+                "该区域深夜活动频繁。房源描述从不披露噪音状况，"
+                "但它是买家后悔的首要原因之一。白天看房无法感受到夜间的声音穿透情况。"
+                if night < 40 or bars > 10 or nightclubs > 2
+                else (
+                    "该区域有一定夜生活活动，是否影响居住体验取决于楼层、"
+                    "建筑隔音质量和个人承受能力，白天看房无法判断。"
+                )
+            ),
+            "action": (
+                "承诺购买前，务必在周五或周六晚22:00后实地察看，"
+                "重点了解双层玻璃和隔音情况。"
+                if night < 40 or bars > 10 or nightclubs > 2
+                else "建议夜间实地考察后再做决定。"
+            ),
+        },
+        "neighbourhood_trajectory": {
+            "title": (
+                "街区商业活动呈下行趋势"
+                if airbnb_data.get("risk_label") == "very_high"  # placeholder, use trend
+                else "街区呈活跃增长态势"
+            ),
+            "detail": "",  # filled dynamically below
+            "action": None,
+        },
+        "cedula_habitabilidad": {
+            "title": "签约前请核实居住证（cèdula d'habitabilitat）是否有效",
+            "detail": (
+                "居住证（cèdula d'habitabilitat）在加泰罗尼亚是接通水电气、"
+                "合法出租房产的必要文件。"
+                f"该{year}年建筑早于现行认证体系，证书可能已过期或从未更新。"
+                "申请新证需 €300–€800 并需技术检查，部分房产可能无法通过。"
+            ) if year else "",
+            "action": "要求卖方提供有效的居住证，已过期须计入成本和风险。",
+        },
+    }
+
+    # Special case: neighbourhood_trajectory needs trajectory data passed in
+    # We handle it differently based on severity/title
+    out = []
+    for item in items:
+        disc_id = item.get("id", "")
+        zh = zh_map.get(disc_id)
+        if zh:
+            new_item = dict(item)
+            new_item["title"]  = zh.get("title", item["title"])
+            new_item["action"] = zh.get("action", item["action"])
+            # For neighbourhood_trajectory, rebuild detail from trajectory data embedded in title
+            if disc_id == "neighbourhood_trajectory":
+                # Extract numbers from original English detail
+                if item["severity"] == "green":
+                    new_item["title"]  = "街区呈活跃增长态势"
+                    new_item["detail"] = item["detail"]  # keep original numbers, readable
+                    new_item["action"] = None
+                else:
+                    new_item["title"]  = "街区商业活动呈下行趋势"
+                    new_item["detail"] = item["detail"]
+                    new_item["action"] = "研究下行原因后再做决定——是开发计划、居民外迁还是季节性因素？"
+            else:
+                new_item["detail"] = zh.get("detail", item["detail"])
+            out.append(new_item)
+        else:
+            out.append(item)
+    return out
 
 
 # ─── individual generators ───────────────────────────────────────────────────

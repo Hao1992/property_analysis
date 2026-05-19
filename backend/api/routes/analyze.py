@@ -109,6 +109,7 @@ async def _run_full_analysis(
     surface_m2_override: float | None = None,
     energy_cert_override: str | None = None,
     condition_override: str | None = None,
+    language: str = "en",
 ) -> dict:
     """Core analysis pipeline — used by both /analyze and /compare."""
     from models.user_profile import UserAnswers
@@ -188,6 +189,7 @@ async def _run_full_analysis(
         school_data=school_data,
         listing_price=listing_price,
         buyer_profile=buyer_profile,
+        language=language,
     )
 
     analysis_flat = {
@@ -208,7 +210,7 @@ async def _run_full_analysis(
         "poi_raw":                  poi_raw,
     }
 
-    narrative_data = ai_narrative.generate_narrative(analysis_flat, buyer_profile)
+    narrative_data = ai_narrative.generate_narrative(analysis_flat, buyer_profile, language=language)
 
     return {
         **analysis_flat,
@@ -238,6 +240,7 @@ async def analyze(req: AnalyzeRequest, request: Request):
         req.address, req.listing_price, req.buyer_profile,
         user_answers_json, req.year_built, req.floor,
         req.surface_m2, req.energy_cert, req.condition,
+        language=req.language,
     )
 
     lat, lng      = data["lat"], data["lng"]
