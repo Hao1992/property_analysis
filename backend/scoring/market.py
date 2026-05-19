@@ -22,18 +22,24 @@ def score_market(market_data: dict) -> dict[str, float | None]:
     else:
         sub["price_trend"] = None
 
-    # ── Price fairness (listing vs area fair value) ───────────────────────────
-    delta = market_data.get("vs_fair_value_pct")
-    if delta is not None:
-        sub["price_fairness"] = (
-            100 if delta <= -5  else   # undervalued vs area
-            85  if delta <= 0   else   # at or below fair value
-            70  if delta <= 5   else   # slight premium
-            50  if delta <= 15  else   # notable premium
-            20                         # significant overvaluation vs area
-        )
+    # ── Price fairness ────────────────────────────────────────────────────────
+    # Prefer Fotocasa comparables position (real active listings, accurate).
+    # Fall back to INE-based delta only when comparables are unavailable.
+    comp_score = market_data.get("comparables_position_score")
+    if comp_score is not None:
+        sub["price_fairness"] = comp_score
     else:
-        sub["price_fairness"] = None
+        delta = market_data.get("vs_fair_value_pct")
+        if delta is not None:
+            sub["price_fairness"] = (
+                100 if delta <= -5  else
+                85  if delta <= 0   else
+                70  if delta <= 5   else
+                50  if delta <= 15  else
+                20
+            )
+        else:
+            sub["price_fairness"] = None
 
     # ── Rental yield vs city average ─────────────────────────────────────────
     yield_val  = market_data.get("rental_yield")

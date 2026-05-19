@@ -88,6 +88,8 @@ export default function Report({ data }: Props) {
             listingPrice={data.listing_price}
             property={data.property}
             comparables={data.market_comparables}
+            acquisitionCosts={data.acquisition_costs}
+            sellerEconomics={data.seller_economics}
           />
         )}
         <HiddenCostBreakdown data={data.hidden_costs} />

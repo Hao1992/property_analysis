@@ -159,6 +159,35 @@ class MarketComparables(BaseModel):
     position: Optional[str] = None     # well_below | below | within_range | above | well_above
 
 
+class AcquisitionCostsData(BaseModel):
+    listing_price: float
+    is_new_build: bool
+    transfer_tax: float
+    transfer_tax_label: str
+    notary_est: float
+    registry_est: float
+    gestoria_est: float
+    other_fees: float
+    total: float
+    overhead_pct: float
+    min_down_payment: float
+    min_savings_needed: float
+
+
+class SellerEconomicsData(BaseModel):
+    listing_price: float
+    agency_low: float
+    agency_high: float
+    plusvalia_est: Optional[float] = None
+    years_owned_est: int
+    energy_cert_cost: float
+    seller_costs_low: float
+    seller_costs_high: float
+    seller_floor_low: float
+    seller_floor_high: float
+    negotiation_headroom_pct: float
+
+
 class DisclosureItem(BaseModel):
     id: str
     severity: str                    # red | yellow | green | info
@@ -186,6 +215,8 @@ class AnalyzeResponse(BaseModel):
     neighbourhood_trajectory: NeighbourhoodTrajectoryData
     valuation: ValuationData
     market_comparables: Optional[MarketComparables] = None
+    acquisition_costs: Optional[AcquisitionCostsData] = None
+    seller_economics: Optional[SellerEconomicsData] = None
     hidden_costs: HiddenCostsData
     score: CompositeScore
     negotiation_tips: list[str]

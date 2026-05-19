@@ -12,12 +12,14 @@ from models.response import (
     AirbnbSaturationData, SchoolQualityData, SchoolEntry, NoiseData,
     HiddenCostsData, NeighbourhoodTrajectoryData, NarrativeData,
     DisclosureItem, MarketComparables, ComparableListing,
+    AcquisitionCostsData, SellerEconomicsData,
 )
 from services import geocoder, overpass, google_places, catastro, ine, open_data_bcn
 from services import airbnb_saturation, school_quality, noise_ecosystem, neighbourhood_trajectory
 from services import ai_narrative, disclosures, fotocasa_scraper
 from scoring import engine, valuation
 from scoring.hidden_costs import estimate_hidden_costs
+from scoring.transaction_costs import calculate_acquisition_costs, estimate_seller_economics
 from utils.cache import cached
 from utils.rate_limiter import check_rate_limit, get_client_ip
 from utils import analytics
@@ -191,13 +193,32 @@ async def _run_full_analysis(
     school_data       = school_quality.get_school_quality(poi_raw, enriched_poi)
     noise_data        = noise_ecosystem.get_noise_ecosystem(poi_raw, prop_data)
 
+    # Derive price fairness from Fotocasa comparables position (reliable market data).
+    # Fall back to INE-based delta only when comparables unavailable.
+    _comp_position = comparables_data.get("position") if comparables_data else None
+    _comp_position_score = {
+        "well_below":   100,
+        "below":         80,
+        "within_range":  65,
+        "above":         45,
+        "well_above":    20,
+    }.get(_comp_position) if _comp_position else None
+
     market_data = {
-        "annual_growth_pct": 4.2,
-        "days_on_market":    55,
-        "vs_fair_value_pct": valuation_data.get("vs_listing_pct", 0),
-        "rental_yield":      0.042,
-        "city_avg_yield":    0.045,
+        "annual_growth_pct":      4.2,
+        "days_on_market":         55,
+        "vs_fair_value_pct":      valuation_data.get("vs_listing_pct", 0),
+        "comparables_position_score": _comp_position_score,
+        "rental_yield":           0.042,
+        "city_avg_yield":         0.045,
     }
+
+    # Transaction cost data (buyer + seller)
+    acq_costs_data    = calculate_acquisition_costs(listing_price) if listing_price else None
+    seller_econ_data  = estimate_seller_economics(
+        listing_price,
+        cadastral_value=prop_data.get("cadastral_value"),
+    ) if listing_price else None
 
     score_data = engine.calculate_composite(
         poi_raw, enriched_poi, safety_data,
@@ -231,6 +252,8 @@ async def _run_full_analysis(
         "noise":                    noise_data,
         "neighbourhood_trajectory": trajectory_data,
         "valuation":                valuation_data,
+        "acquisition_costs":        acq_costs_data,
+        "seller_economics":         seller_econ_data,
         "hidden_costs":             hidden_costs_data,
         "score":                    score_data,
         "disclosures":              disclosure_items,
@@ -365,6 +388,14 @@ async def analyze(req: AnalyzeRequest, request: Request):
                 position=comparables_data.get("position"),
             )
             if comparables_data else None
+        ),
+        acquisition_costs=(
+            AcquisitionCostsData(**data["acquisition_costs"])
+            if data.get("acquisition_costs") else None
+        ),
+        seller_economics=(
+            SellerEconomicsData(**data["seller_economics"])
+            if data.get("seller_economics") else None
         ),
         hidden_costs=HiddenCostsData(**hidden_costs_data),
         score=CompositeScore(

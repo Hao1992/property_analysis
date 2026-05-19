@@ -1,5 +1,4 @@
-import type { ValuationData, PropertyData, MarketComparables } from '../types/analysis'
-import WaterfallChart from './WaterfallChart'
+import type { ValuationData, PropertyData, MarketComparables, AcquisitionCostsData, SellerEconomicsData } from '../types/analysis'
 import SourceBadge from './SourceBadge'
 import { useLanguage } from '../contexts/LanguageContext'
 
@@ -8,6 +7,8 @@ interface Props {
   listingPrice?: number
   property?: PropertyData
   comparables?: MarketComparables
+  acquisitionCosts?: AcquisitionCostsData
+  sellerEconomics?: SellerEconomicsData
 }
 
 const fmt  = (n: number) => `€${n.toLocaleString('es-ES')}`
@@ -22,24 +23,20 @@ const POSITION_LABEL: Record<string, { text: string; color: string }> = {
 }
 
 function MarketRangeBar({ comp }: { comp: MarketComparables }) {
-  // Build a normalised position (0-1) for the price dot on the bar
-  // Bar spans from p25*0.7 to p75*1.5 for visual context
   const lo = comp.p25_ppm2 * 0.6
   const hi = comp.p75_ppm2 * 1.6
   const range = hi - lo
 
   const pct = (v: number) => Math.max(0, Math.min(100, ((v - lo) / range) * 100))
 
-  const p25pct    = pct(comp.p25_ppm2)
-  const medpct    = pct(comp.median_ppm2)
-  const p75pct    = pct(comp.p75_ppm2)
-  const askpct    = comp.asking_ppm2 ? pct(comp.asking_ppm2) : null
-
-  const posLabel  = comp.position ? POSITION_LABEL[comp.position] : null
+  const p25pct  = pct(comp.p25_ppm2)
+  const medpct  = pct(comp.median_ppm2)
+  const p75pct  = pct(comp.p75_ppm2)
+  const askpct  = comp.asking_ppm2 ? pct(comp.asking_ppm2) : null
+  const posLabel = comp.position ? POSITION_LABEL[comp.position] : null
 
   return (
     <div className="space-y-3">
-      {/* position summary */}
       {askpct !== null && posLabel && comp.asking_ppm2 && (
         <div className="flex items-baseline gap-2 flex-wrap">
           <span className={`text-sm font-semibold ${posLabel.color}`}>{posLabel.text}</span>
@@ -49,24 +46,16 @@ function MarketRangeBar({ comp }: { comp: MarketComparables }) {
         </div>
       )}
 
-      {/* range bar */}
       <div className="relative h-7">
-        {/* grey track */}
         <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-2 bg-stone-200 rounded-full" />
-
-        {/* IQR band (p25→p75) */}
         <div
           className="absolute top-1/2 -translate-y-1/2 h-2 bg-blue-200 rounded-full"
           style={{ left: `${p25pct}%`, width: `${p75pct - p25pct}%` }}
         />
-
-        {/* median tick */}
         <div
           className="absolute top-1/2 -translate-y-1/2 w-0.5 h-4 bg-blue-500 rounded-full"
           style={{ left: `${medpct}%` }}
         />
-
-        {/* asking price dot */}
         {askpct !== null && (
           <div
             className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-white shadow-md bg-amber-500 z-10"
@@ -75,7 +64,6 @@ function MarketRangeBar({ comp }: { comp: MarketComparables }) {
         )}
       </div>
 
-      {/* axis labels */}
       <div className="flex justify-between text-xs" style={{ color: 'var(--text-muted)' }}>
         <span>{fmtK(comp.p25_ppm2)}/m² <span className="opacity-60">(P25)</span></span>
         <span className="font-medium text-blue-600">{fmtK(comp.median_ppm2)}/m² median</span>
@@ -85,21 +73,113 @@ function MarketRangeBar({ comp }: { comp: MarketComparables }) {
   )
 }
 
-export default function ValuationModule({ valuation, listingPrice, property, comparables }: Props) {
+function CostRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+  return (
+    <div className={`flex justify-between items-center py-1.5 ${highlight ? 'font-semibold' : ''}`}>
+      <span className="text-sm" style={{ color: highlight ? 'var(--text-main)' : 'var(--text-muted)' }}>{label}</span>
+      <span className="text-sm tabular-nums" style={{ color: highlight ? 'var(--text-main)' : 'var(--text-muted)' }}>{value}</span>
+    </div>
+  )
+}
+
+function AcquisitionPanel({ ac, t }: { ac: AcquisitionCostsData; t: any }) {
+  const s = t.sections.valuation.acquisition
+  return (
+    <div className="border-t pt-4 space-y-3" style={{ borderColor: 'var(--border)' }}>
+      <div>
+        <p className="text-xs font-medium uppercase tracking-widest mb-0.5" style={{ color: 'var(--accent)' }}>
+          {s.label}
+        </p>
+        <h3 className="font-semibold text-sm" style={{ color: 'var(--text-main)' }}>{s.title}</h3>
+      </div>
+
+      <div className="rounded-xl border divide-y" style={{ borderColor: 'var(--border)' }}>
+        <div className="px-4 py-1">
+          <CostRow label={s.askingPrice} value={fmt(ac.listing_price)} />
+          <CostRow label={`+ ${ac.transfer_tax_label}`} value={`+${fmt(ac.transfer_tax)}`} />
+          <CostRow label={`+ ${s.notaryRegistry}`} value={`~${fmt(ac.other_fees)}`} />
+        </div>
+        <div className="px-4 py-2 bg-stone-50 rounded-b-xl">
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-bold" style={{ color: 'var(--text-main)' }}>{s.totalCash}</span>
+            <div className="text-right">
+              <span className="text-base font-bold font-display" style={{ color: 'var(--accent)' }}>{fmt(ac.total)}</span>
+              <span className="text-xs ml-1.5" style={{ color: 'var(--text-muted)' }}>(+{ac.overhead_pct}%)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-xl border px-4 py-3 bg-blue-50 border-blue-100 space-y-1">
+        <p className="text-xs font-semibold text-blue-700 mb-1.5">{s.minSavingsTitle}</p>
+        <CostRow label={s.downPayment} value={fmt(ac.min_down_payment)} />
+        <CostRow label={s.purchaseCosts} value={`+${fmt(ac.transfer_tax + ac.other_fees)}`} />
+        <div className="flex justify-between items-center pt-1 border-t border-blue-200 mt-1">
+          <span className="text-sm font-bold text-blue-800">{s.totalSavings}</span>
+          <span className="text-sm font-bold text-blue-800">{fmt(ac.min_savings_needed)}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function SellerPanel({ se, t }: { se: SellerEconomicsData; t: any }) {
+  const s = t.sections.valuation.seller
+  return (
+    <div className="border-t pt-4 space-y-3" style={{ borderColor: 'var(--border)' }}>
+      <div>
+        <p className="text-xs font-medium uppercase tracking-widest mb-0.5" style={{ color: 'var(--accent)' }}>
+          {s.label}
+        </p>
+        <h3 className="font-semibold text-sm" style={{ color: 'var(--text-main)' }}>{s.title}</h3>
+      </div>
+
+      <div className="rounded-xl border divide-y" style={{ borderColor: 'var(--border)' }}>
+        <div className="px-4 py-1">
+          <CostRow label={s.agency} value={`${fmt(se.agency_low)} – ${fmt(se.agency_high)}`} />
+          {se.plusvalia_est != null && (
+            <CostRow label={s.plusvalia} value={`~${fmt(se.plusvalia_est)}`} />
+          )}
+          <CostRow label={s.energyCert} value={`~${fmt(se.energy_cert_cost)}`} />
+        </div>
+        <div className="px-4 py-2 bg-stone-50 rounded-b-xl space-y-1.5">
+          <div className="flex justify-between items-center">
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{s.sellerCosts}</span>
+            <span className="text-xs font-medium" style={{ color: 'var(--text-main)' }}>
+              {fmt(se.seller_costs_low)} – {fmt(se.seller_costs_high)}
+            </span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-bold" style={{ color: 'var(--text-main)' }}>{s.sellerFloor}</span>
+            <span className="text-sm font-bold" style={{ color: 'var(--text-main)' }}>
+              {fmt(se.seller_floor_low)} – {fmt(se.seller_floor_high)}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
+        <div className="text-lg">🤝</div>
+        <div>
+          <span className="text-xs font-semibold text-amber-800">{s.headroom} </span>
+          <span className="text-xs font-bold text-amber-900">~{se.negotiation_headroom_pct}%</span>
+          <p className="text-xs text-amber-700 mt-0.5">{s.headroomNote}</p>
+        </div>
+      </div>
+
+      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{s.irpfNote}</p>
+    </div>
+  )
+}
+
+export default function ValuationModule({ listingPrice, property, comparables, acquisitionCosts, sellerEconomics }: Props) {
   const { t } = useLanguage()
-  const val = t.sections.valuation
-
-  const missing: string[] = []
-  if (!property?.surface_m2) missing.push(t.form.surface)
-  if (!property?.year_built)  missing.push(t.form.yearBuilt)
-  if (!property?.energy_cert) missing.push(t.form.energyCert)
-
   const hasComparables = comparables && (comparables.median_ppm2 > 0)
 
   return (
     <div className="card p-5 space-y-5">
 
-      {/* ── Market Context (primary, shown when comparables available) ── */}
+      {/* ── Market Context (primary) ── */}
       {hasComparables && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
@@ -119,7 +199,6 @@ export default function ValuationModule({ valuation, listingPrice, property, com
 
           <MarketRangeBar comp={comparables} />
 
-          {/* Comparable listings table */}
           {comparables.listings.length > 0 && (
             <div className="border rounded-xl overflow-hidden" style={{ borderColor: 'var(--border)' }}>
               <table className="w-full text-xs">
@@ -154,50 +233,15 @@ export default function ValuationModule({ valuation, listingPrice, property, com
         </div>
       )}
 
-      {/* ── INE Fair Value estimate (secondary / reference) ── */}
-      <div className={hasComparables ? 'border-t pt-4' : ''} style={hasComparables ? { borderColor: 'var(--border)' } : {}}>
-        <div className="mb-3">
-          <p className="text-xs font-medium uppercase tracking-widest mb-0.5" style={{ color: 'var(--accent)' }}>
-            {hasComparables ? 'REGISTRY REFERENCE' : val.label}
-          </p>
-          <h3 className="font-semibold text-sm" style={{ color: 'var(--text-main)' }}>
-            {hasComparables
-              ? 'INE registry estimate (may underestimate market by 30–50%)'
-              : val.title}
-          </h3>
-        </div>
+      {/* ── Acquisition Cost ── */}
+      {acquisitionCosts && (
+        <AcquisitionPanel ac={acquisitionCosts} t={t} />
+      )}
 
-        <div className="grid grid-cols-3 gap-3">
-          <div className="text-center p-3 bg-stone-50 rounded-xl border" style={{ borderColor: 'var(--border)' }}>
-            <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{val.base}</p>
-            <p className="text-base font-bold font-display" style={{ color: 'var(--text-main)' }}>{fmt(valuation.base_value)}</p>
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{fmt(valuation.fair_value_ppm2)}/m²</p>
-          </div>
-          <div className="text-center p-3 bg-blue-50 rounded-xl border border-blue-100">
-            <p className="text-xs text-blue-600 mb-1">{val.fair}</p>
-            <p className="text-base font-bold font-display text-blue-700">{fmt(valuation.fair_value)}</p>
-            <p className="text-xs text-blue-400">
-              {fmt(valuation.fair_value_low)} – {fmt(valuation.fair_value_high)}
-            </p>
-          </div>
-          {listingPrice && (
-            <div className="text-center p-3 rounded-xl bg-stone-50 border" style={{ borderColor: 'var(--border)' }}>
-              <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{val.listing}</p>
-              <p className="text-base font-bold font-display" style={{ color: 'var(--text-main)' }}>{fmt(listingPrice)}</p>
-            </div>
-          )}
-        </div>
-
-        {missing.length > 0 && (
-          <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700">
-            <span className="font-semibold">{val.defaultsWarning}</span> — {val.defaultsMissing}{' '}
-            {missing.join(', ')}.{' '}
-            {val.defaultsAdd}
-          </div>
-        )}
-
-        <WaterfallChart base={valuation.base_value} adjustments={valuation.adjustments} fair={valuation.fair_value} />
-      </div>
+      {/* ── Seller Economics ── */}
+      {sellerEconomics && (
+        <SellerPanel se={sellerEconomics} t={t} />
+      )}
 
       <SourceBadge className="mt-1" sources={[
         ...(hasComparables && comparables!.source === 'Fotocasa'
@@ -205,8 +249,7 @@ export default function ValuationModule({ valuation, listingPrice, property, com
           : hasComparables
           ? [{ label: 'District statistics', url: 'https://www.fotocasa.es/es/indice-de-precios', note: '2024 calibrated ranges' }]
           : []),
-        { label: 'INE — median price/m²', url: 'https://www.ine.es/jaxiT3/Tabla.htm?t=25171', note: 'by census section' },
-        { label: 'Catastro', url: 'https://www.catastro.meh.es/', note: 'surface, year built' },
+        { label: 'Catastro', url: 'https://www.catastro.meh.es/', note: 'cadastral value, surface' },
       ]} />
     </div>
   )

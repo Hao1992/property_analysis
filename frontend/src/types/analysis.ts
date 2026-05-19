@@ -157,6 +157,35 @@ export interface MarketComparables {
   position?: 'well_below' | 'below' | 'within_range' | 'above' | 'well_above';
 }
 
+export interface AcquisitionCostsData {
+  listing_price: number;
+  is_new_build: boolean;
+  transfer_tax: number;
+  transfer_tax_label: string;
+  notary_est: number;
+  registry_est: number;
+  gestoria_est: number;
+  other_fees: number;
+  total: number;
+  overhead_pct: number;
+  min_down_payment: number;
+  min_savings_needed: number;
+}
+
+export interface SellerEconomicsData {
+  listing_price: number;
+  agency_low: number;
+  agency_high: number;
+  plusvalia_est?: number;
+  years_owned_est: number;
+  energy_cert_cost: number;
+  seller_costs_low: number;
+  seller_costs_high: number;
+  seller_floor_low: number;
+  seller_floor_high: number;
+  negotiation_headroom_pct: number;
+}
+
 export interface DisclosureItem {
   id: string;
   severity: 'red' | 'yellow' | 'green' | 'info';
@@ -184,6 +213,8 @@ export interface AnalyzeResponse {
   neighbourhood_trajectory: NeighbourhoodTrajectoryData;
   valuation: ValuationData;
   market_comparables?: MarketComparables;
+  acquisition_costs?: AcquisitionCostsData;
+  seller_economics?: SellerEconomicsData;
   hidden_costs: HiddenCostsData;
   score: CompositeScore;
   negotiation_tips: string[];
