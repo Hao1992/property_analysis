@@ -37,6 +37,26 @@ export interface PropertyData {
   has_lift?: boolean;
   floor?: number;
   ite_status?: string;
+  has_parking?: boolean;
+  has_terrace?: boolean;
+  has_views?: boolean;
+}
+
+export interface GarageEntry {
+  name: string;
+  distance_m: number;
+  monthly_est_eur: number;
+}
+
+export interface ParkingData {
+  has_private_parking: boolean;
+  nearby_garages_count: number;
+  nearby_garages: GarageEntry[];
+  zone_type: 'zona_verde' | 'zona_azul' | 'free' | 'mixed';
+  zone_monthly_eur?: number;
+  recommended_option: 'private' | 'garage' | 'street' | 'free';
+  recommended_monthly_eur?: number;
+  parking_needed: boolean;
 }
 
 export interface ValuationAdjustment {
@@ -102,6 +122,7 @@ export interface HiddenCostsData {
   derrama_provision_monthly_eur: number;
   energy_upgrade_required: boolean;
   energy_upgrade_estimate_eur?: number;
+  parking_monthly_eur?: number;
   total_monthly_eur: number;
   total_annual_eur: number;
 }
@@ -216,6 +237,7 @@ export interface AnalyzeResponse {
   acquisition_costs?: AcquisitionCostsData;
   seller_economics?: SellerEconomicsData;
   hidden_costs: HiddenCostsData;
+  parking?: ParkingData;
   score: CompositeScore;
   negotiation_tips: string[];
   narrative: NarrativeData;
@@ -244,6 +266,9 @@ export interface AnalyzeRequest {
   surface_m2?: number;
   energy_cert?: string;
   condition?: 'renovated' | 'good' | 'needs_work';
+  has_parking?: boolean;
+  has_terrace?: boolean;
+  has_views?: boolean;
   language?: string;
 }
 

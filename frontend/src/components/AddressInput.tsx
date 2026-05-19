@@ -21,6 +21,9 @@ export default function AddressInput({ onSubmit, loading }: Props) {
   const [surfaceM2, setSurfaceM2] = useState('')
   const [energyCert, setEnergyCert] = useState('')
   const [condition, setCondition] = useState<AnalyzeRequest['condition'] | ''>('')
+  const [hasParking, setHasParking] = useState<boolean | undefined>(undefined)
+  const [hasTerrace, setHasTerrace] = useState<boolean | undefined>(undefined)
+  const [hasViews, setHasViews] = useState<boolean | undefined>(undefined)
   const [showPropDetails, setShowPropDetails] = useState(false)
   const [userAnswers, setUserAnswers] = useState<UserAnswers>({})
 
@@ -65,11 +68,49 @@ export default function AddressInput({ onSubmit, loading }: Props) {
       surface_m2:  !isNaN(parsedSurface) && parsedSurface > 0  ? parsedSurface : undefined,
       energy_cert: energyCert || undefined,
       condition:   (condition as AnalyzeRequest['condition']) || undefined,
+      has_parking: hasParking,
+      has_terrace: hasTerrace,
+      has_views:   hasViews,
     })
   }
 
   const inputCls = "w-full px-4 py-3 bg-stone-50 border rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-amber-300/50 focus:border-amber-300"
   const labelCls = "block text-sm font-medium mb-1"
+
+  function FeatureToggle({
+    label,
+    value,
+    onChange,
+    yesLabel,
+    noLabel,
+  }: {
+    label: string
+    value: boolean | undefined
+    onChange: (v: boolean | undefined) => void
+    yesLabel: string
+    noLabel: string
+  }) {
+    const btnBase = "px-2.5 py-1.5 text-xs rounded-lg border transition-all font-medium"
+    const active  = "border-amber-400 bg-amber-50 text-amber-700"
+    const inactive = "border-stone-200 bg-white text-stone-500 hover:border-stone-300"
+    return (
+      <div>
+        <p className="text-xs font-medium mb-1.5" style={{ color: 'var(--text-sub)' }}>{label}</p>
+        <div className="flex gap-1.5">
+          <button
+            type="button"
+            onClick={() => onChange(value === true ? undefined : true)}
+            className={`${btnBase} ${value === true ? active : inactive}`}
+          >{yesLabel}</button>
+          <button
+            type="button"
+            onClick={() => onChange(value === false ? undefined : false)}
+            className={`${btnBase} ${value === false ? active : inactive}`}
+          >{noLabel}</button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <form onSubmit={handleSubmit} className="card p-6 space-y-5">
@@ -183,52 +224,80 @@ export default function AddressInput({ onSubmit, loading }: Props) {
         </button>
 
         {showPropDetails && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-stone-50 border rounded-xl p-4" style={{ borderColor: 'var(--border)' }}>
-            <div>
-              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-sub)' }}>
-                {t.form.surface}
-              </label>
-              <input
-                type="number"
-                value={surfaceM2}
-                onChange={e => setSurfaceM2(e.target.value)}
-                placeholder="e.g. 85"
-                min={20} max={1000}
-                className="w-full px-3 py-2.5 bg-white border rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-300/50 focus:border-amber-300"
-                style={{ borderColor: 'var(--border)', color: 'var(--text-main)' }}
-              />
+          <div className="space-y-3 bg-stone-50 border rounded-xl p-4" style={{ borderColor: 'var(--border)' }}>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-sub)' }}>
+                  {t.form.surface}
+                </label>
+                <input
+                  type="number"
+                  value={surfaceM2}
+                  onChange={e => setSurfaceM2(e.target.value)}
+                  placeholder="e.g. 85"
+                  min={20} max={1000}
+                  className="w-full px-3 py-2.5 bg-white border rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-300/50 focus:border-amber-300"
+                  style={{ borderColor: 'var(--border)', color: 'var(--text-main)' }}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-sub)' }}>
+                  {t.form.energyCert}
+                </label>
+                <select
+                  value={energyCert}
+                  onChange={e => setEnergyCert(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-white border rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-300/50 focus:border-amber-300"
+                  style={{ borderColor: 'var(--border)', color: 'var(--text-main)' }}
+                >
+                  <option value="">{t.form.conditionUnknown}</option>
+                  {['A','B','C','D','E','F','G'].map(c => (
+                    <option key={c} value={c}>{c} {c === 'A' ? '(best)' : c === 'G' ? '(worst)' : ''}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-sub)' }}>
+                  {t.form.condition}
+                </label>
+                <select
+                  value={condition}
+                  onChange={e => setCondition(e.target.value as AnalyzeRequest['condition'] | '')}
+                  className="w-full px-3 py-2.5 bg-white border rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-300/50 focus:border-amber-300"
+                  style={{ borderColor: 'var(--border)', color: 'var(--text-main)' }}
+                >
+                  <option value="">{t.form.conditionUnknown}</option>
+                  <option value="renovated">{t.form.conditionRenovated}</option>
+                  <option value="good">{t.form.conditionGood}</option>
+                  <option value="needs_work">{t.form.conditionWork}</option>
+                </select>
+              </div>
             </div>
             <div>
-              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-sub)' }}>
-                {t.form.energyCert}
-              </label>
-              <select
-                value={energyCert}
-                onChange={e => setEnergyCert(e.target.value)}
-                className="w-full px-3 py-2.5 bg-white border rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-300/50 focus:border-amber-300"
-                style={{ borderColor: 'var(--border)', color: 'var(--text-main)' }}
-              >
-                <option value="">{t.form.conditionUnknown}</option>
-                {['A','B','C','D','E','F','G'].map(c => (
-                  <option key={c} value={c}>{c} {c === 'A' ? '(best)' : c === 'G' ? '(worst)' : ''}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-sub)' }}>
-                {t.form.condition}
-              </label>
-              <select
-                value={condition}
-                onChange={e => setCondition(e.target.value as AnalyzeRequest['condition'] | '')}
-                className="w-full px-3 py-2.5 bg-white border rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-300/50 focus:border-amber-300"
-                style={{ borderColor: 'var(--border)', color: 'var(--text-main)' }}
-              >
-                <option value="">{t.form.conditionUnknown}</option>
-                <option value="renovated">{t.form.conditionRenovated}</option>
-                <option value="good">{t.form.conditionGood}</option>
-                <option value="needs_work">{t.form.conditionWork}</option>
-              </select>
+              <p className="text-xs font-medium mb-2" style={{ color: 'var(--text-sub)' }}>{t.form.listingFeatures}</p>
+              <div className="grid grid-cols-3 gap-3">
+                <FeatureToggle
+                  label={t.form.hasParking}
+                  value={hasParking}
+                  onChange={setHasParking}
+                  yesLabel={t.form.featureYes}
+                  noLabel={t.form.featureNo}
+                />
+                <FeatureToggle
+                  label={t.form.hasTerrace}
+                  value={hasTerrace}
+                  onChange={setHasTerrace}
+                  yesLabel={t.form.featureYes}
+                  noLabel={t.form.featureNo}
+                />
+                <FeatureToggle
+                  label={t.form.hasViews}
+                  value={hasViews}
+                  onChange={setHasViews}
+                  yesLabel={t.form.featureYes}
+                  noLabel={t.form.featureNo}
+                />
+              </div>
             </div>
           </div>
         )}

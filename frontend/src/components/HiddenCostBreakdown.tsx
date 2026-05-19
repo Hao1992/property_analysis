@@ -45,6 +45,12 @@ export default function HiddenCostBreakdown({ data }: Props) {
           value={`${fmt(data.derrama_provision_monthly_eur)}/mo`}
           sub={`${costs.rows.derramaRisk} ${(t.sections.derramaLevels as Record<string,string>)[data.derrama_risk_label] ?? data.derrama_risk_label.toUpperCase()}`}
         />
+        {data.parking_monthly_eur != null && data.parking_monthly_eur > 0 && (
+          <Row
+            label={costs.rows.parking}
+            value={`${fmt(data.parking_monthly_eur)}/mo`}
+          />
+        )}
       </div>
 
       {data.derrama_risk_label !== 'low' && (

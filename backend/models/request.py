@@ -18,6 +18,9 @@ class AnalyzeRequest(BaseModel):
     surface_m2: Optional[float] = None     # Advertised surface area from listing
     energy_cert: Optional[str] = None      # A–G energy rating from listing
     condition: Optional[str] = None        # "renovated" | "good" | "needs_work"
+    has_parking: Optional[bool] = None
+    has_terrace: Optional[bool] = None
+    has_views:   Optional[bool] = None
     language: str = "en"                   # "en" | "zh" — report output language
 
 

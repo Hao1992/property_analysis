@@ -16,10 +16,12 @@ from models.response import (
     HiddenCostsData, NeighbourhoodTrajectoryData, NarrativeData,
     DisclosureItem, MarketComparables, ComparableListing,
     AcquisitionCostsData, SellerEconomicsData,
+    ParkingData, GarageEntry,
 )
 from services import geocoder, overpass, google_places, catastro, ine, open_data_bcn
 from services import airbnb_saturation, school_quality, noise_ecosystem, neighbourhood_trajectory
 from services import ai_narrative, disclosures, fotocasa_scraper
+from services.parking import get_parking_analysis
 from scoring import engine, valuation
 from scoring.hidden_costs import estimate_hidden_costs
 from scoring.transaction_costs import calculate_acquisition_costs, estimate_seller_economics
@@ -131,6 +133,9 @@ async def _run_full_analysis(
     energy_cert_override: str | None = None,
     condition_override: str | None = None,
     language: str = "en",
+    has_parking_override: bool | None = None,
+    has_terrace_override: bool | None = None,
+    has_views_override: bool | None = None,
 ) -> dict:
     """Core analysis pipeline — used by both /analyze and /compare."""
     from models.user_profile import UserAnswers
@@ -183,18 +188,39 @@ async def _run_full_analysis(
         overrides["energy_cert"] = energy_cert_override.upper()
     if condition_override == "renovated":
         overrides["renovated"] = True
+    # Apply unconditionally — Catastro never provides these
+    if has_parking_override is not None:
+        overrides["has_parking"] = has_parking_override
+    if has_terrace_override is not None:
+        overrides["has_terrace"] = has_terrace_override
+    if has_views_override is not None:
+        overrides["has_views"] = has_views_override
     if overrides:
         prop_data = {**prop_data, **overrides}
 
-    # Step 2: OSM baseline ratings (replaces Google Places — zero cost)
-    enriched_poi = await google_places.enrich_with_ratings(poi_raw)
+    # Step 2: OSM baseline ratings (replaces Google Places — zero cost) + parking in parallel
+    enriched_poi, parking_data = await asyncio.gather(
+        google_places.enrich_with_ratings(poi_raw),
+        get_parking_analysis(
+            lat=lat,
+            lng=lng,
+            district=district,
+            has_private_parking=bool(prop_data.get("has_parking")),
+            has_car=bool(answers.has_car) if answers else False,
+        ),
+    )
 
     # Step 3: INE price data
     median_ppm2 = await ine.get_median_price_ppm2(census_section or "", district)
 
     # Step 4: Synchronous derivations (no IO)
     valuation_data    = valuation.estimate_fair_value(median_ppm2, prop_data, listing_price)
-    hidden_costs_data = estimate_hidden_costs(prop_data, listing_price)
+    _parking_m = (
+        parking_data["recommended_monthly_eur"]
+        if parking_data["parking_needed"] and parking_data["recommended_monthly_eur"]
+        else None
+    )
+    hidden_costs_data = estimate_hidden_costs(prop_data, listing_price, parking_monthly=_parking_m)
     school_data       = school_quality.get_school_quality(poi_raw, enriched_poi)
     noise_data        = noise_ecosystem.get_noise_ecosystem(poi_raw, prop_data)
 
@@ -260,6 +286,7 @@ async def _run_full_analysis(
         "acquisition_costs":        acq_costs_data,
         "seller_economics":         seller_econ_data,
         "hidden_costs":             hidden_costs_data,
+        "parking":                  parking_data,
         "score":                    score_data,
         "disclosures":              disclosure_items,
         "enriched_poi":             enriched_poi,
@@ -299,6 +326,9 @@ async def analyze(req: AnalyzeRequest, request: Request):
         user_answers_json, req.year_built, req.floor,
         req.surface_m2, req.energy_cert, req.condition,
         language=req.language,
+        has_parking_override=req.has_parking,
+        has_terrace_override=req.has_terrace,
+        has_views_override=req.has_views,
     )
     duration_ms = round((time.time() - _t0) * 1000)
 
@@ -329,6 +359,9 @@ async def analyze(req: AnalyzeRequest, request: Request):
         ite_status=prop_data.get("ite_status", "UNKNOWN"),
         flood_zone=prop_data.get("flood_zone"),
         open_charges=prop_data.get("open_charges"),
+        has_parking=prop_data.get("has_parking"),
+        has_terrace=prop_data.get("has_terrace"),
+        has_views=prop_data.get("has_views"),
     )
 
     enriched_count = sum(
@@ -412,6 +445,16 @@ async def analyze(req: AnalyzeRequest, request: Request):
             if data.get("seller_economics") else None
         ),
         hidden_costs=HiddenCostsData(**hidden_costs_data),
+        parking=ParkingData(
+            has_private_parking=data["parking"]["has_private_parking"],
+            nearby_garages_count=data["parking"]["nearby_garages_count"],
+            nearby_garages=[GarageEntry(**g) for g in data["parking"]["nearby_garages"]],
+            zone_type=data["parking"]["zone_type"],
+            zone_monthly_eur=data["parking"]["zone_monthly_eur"],
+            recommended_option=data["parking"]["recommended_option"],
+            recommended_monthly_eur=data["parking"]["recommended_monthly_eur"],
+            parking_needed=data["parking"]["parking_needed"],
+        ) if data.get("parking") else None,
         score=CompositeScore(
             composite=score_data["composite"],
             composite_pre_penalty=score_data["composite_pre_penalty"],

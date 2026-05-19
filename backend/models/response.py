@@ -44,6 +44,9 @@ class PropertyData(BaseModel):
     ite_status: Optional[str] = None           # FAVORABLE | DESFAVORABLE | UNKNOWN
     flood_zone: Optional[str] = None           # A | B | C | None
     open_charges: Optional[int] = None         # count of title encumbrances
+    has_parking: Optional[bool] = None
+    has_terrace: Optional[bool] = None
+    has_views: Optional[bool] = None
 
 
 class ValuationData(BaseModel):
@@ -94,6 +97,23 @@ class NoiseData(BaseModel):
     construction_risk: str                     # low | medium | high
 
 
+class GarageEntry(BaseModel):
+    name: str
+    distance_m: float
+    monthly_est_eur: int
+
+
+class ParkingData(BaseModel):
+    has_private_parking: bool
+    nearby_garages_count: int
+    nearby_garages: list[GarageEntry]
+    zone_type: str                         # zona_verde | zona_azul | free | mixed
+    zone_monthly_eur: Optional[int] = None # None when zone is free
+    recommended_option: str                # private | garage | street | free
+    recommended_monthly_eur: Optional[int] = None  # None when has_private_parking=True
+    parking_needed: bool                   # has_car=True AND has_parking=False
+
+
 class HiddenCostsData(BaseModel):
     ibi_annual_eur: float
     community_fee_monthly_eur: float
@@ -102,6 +122,7 @@ class HiddenCostsData(BaseModel):
     derrama_provision_monthly_eur: float
     energy_upgrade_required: bool
     energy_upgrade_estimate_eur: Optional[float] = None
+    parking_monthly_eur: Optional[int] = None
     total_monthly_eur: float
     total_annual_eur: float
 
@@ -218,6 +239,7 @@ class AnalyzeResponse(BaseModel):
     acquisition_costs: Optional[AcquisitionCostsData] = None
     seller_economics: Optional[SellerEconomicsData] = None
     hidden_costs: HiddenCostsData
+    parking: Optional[ParkingData] = None
     score: CompositeScore
     negotiation_tips: list[str]
     narrative: NarrativeData

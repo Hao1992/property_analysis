@@ -9,7 +9,7 @@ cert letter (graduated scale) rather than a binary upgrade-required flag.
 from __future__ import annotations
 
 
-def estimate_hidden_costs(prop: dict, listing_price: float | None = None) -> dict:
+def estimate_hidden_costs(prop: dict, listing_price: float | None = None, parking_monthly: int | None = None) -> dict:
     surface    = prop.get("surface_m2") or 80
     year_built = prop.get("year_built")
     age        = (2026 - year_built) if year_built else None
@@ -57,7 +57,8 @@ def estimate_hidden_costs(prop: dict, listing_price: float | None = None) -> dic
         base_cost = {"E": 9_000, "F": 16_000, "G": 28_000}[cert]
         energy_upgrade_estimate = round(base_cost * max(0.5, surface / 80))
 
-    total_monthly = community_monthly + derrama_provision + utility_monthly
+    parking_m = parking_monthly or 0
+    total_monthly = round(community_monthly + derrama_provision + utility_monthly + parking_m)
     total_annual  = round(ibi_annual + total_monthly * 12)
 
     return {
@@ -68,6 +69,7 @@ def estimate_hidden_costs(prop: dict, listing_price: float | None = None) -> dic
         "derrama_provision_monthly_eur": derrama_provision,
         "energy_upgrade_required":       energy_upgrade_required,
         "energy_upgrade_estimate_eur":   energy_upgrade_estimate,
+        "parking_monthly_eur":           parking_monthly,
         "total_monthly_eur":             total_monthly,
         "total_annual_eur":              total_annual,
     }

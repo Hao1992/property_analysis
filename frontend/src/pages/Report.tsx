@@ -8,6 +8,7 @@ import PropertyMap from '../components/PropertyMap'
 import PropertyDetails from '../components/PropertyDetails'
 import NarrativeCard from '../components/NarrativeCard'
 import HiddenCostBreakdown from '../components/HiddenCostBreakdown'
+import ParkingModule from '../components/ParkingModule'
 import AirbnbSaturation from '../components/AirbnbSaturation'
 import SchoolQualityModule from '../components/SchoolQualityModule'
 import NoiseEcosystem from '../components/NoiseEcosystem'
@@ -103,6 +104,13 @@ export default function Report({ data }: Props) {
         )}
         <HiddenCostBreakdown data={data.hidden_costs} />
       </div>
+
+      {/* Parking */}
+      {data.parking && (
+        <div data-section="parking">
+          <ParkingModule data={data.parking} />
+        </div>
+      )}
 
       {/* Negotiation */}
       <div data-section="negotiation">
