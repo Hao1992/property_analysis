@@ -1,147 +1,263 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { compareProperties } from '../api/client'
 import type { CompareResponse, CompareRequest } from '../types/analysis'
-
-const PROFILES = [
-  { value: 'balanced', label: 'Balanced' },
-  { value: 'family', label: 'Family' },
-  { value: 'investor', label: 'Investor' },
-  { value: 'retiree', label: 'Retiree' },
-  { value: 'expat', label: 'Expat' },
-]
+import { useLanguage } from '../contexts/LanguageContext'
 
 const RISK_COLORS: Record<string, string> = {
-  low:       'text-emerald-400',
-  medium:    'text-amber-400',
-  high:      'text-orange-400',
-  very_high: 'text-red-400',
+  low:       'text-emerald-600',
+  medium:    'text-amber-600',
+  high:      'text-orange-600',
+  very_high: 'text-red-600',
 }
 
 const GRADE_COLORS: Record<string, string> = {
-  'Excellent buy':          'text-emerald-400',
-  'Good buy':               'text-green-400',
-  'Proceed with caution':   'text-amber-400',
-  'High risk — reconsider': 'text-red-400',
+  'Excellent buy':          'text-emerald-600',
+  'Good buy':               'text-emerald-600',
+  'Proceed with caution':   'text-amber-600',
+  'High risk — reconsider': 'text-red-600',
 }
 
-export default function Compare() {
-  const [addresses, setAddresses] = useState(['', ''])
-  const [prices, setPrices] = useState(['', ''])
-  const [profile, setProfile] = useState('balanced')
-  const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<CompareResponse | null>(null)
-  const [error, setError] = useState<string | null>(null)
+// ── Address input with Nominatim autocomplete ─────────────────────────────────
+function AddressField({
+  value, onChange, placeholder,
+}: {
+  index?: number
+  value: string
+  onChange: (v: string) => void
+  placeholder: string
+}) {
+  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [show, setShow] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const addAddress = () => {
-    if (addresses.length < 3) {
-      setAddresses([...addresses, ''])
-      setPrices([...prices, ''])
-    }
+  useEffect(() => {
+    if (value.length < 5) { setSuggestions([]); return }
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const q = encodeURIComponent(value + (value.toLowerCase().includes('barcelona') ? '' : ', Barcelona'))
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=5&addressdetails=1&countrycodes=es`,
+          { headers: { 'Accept-Language': 'en' } }
+        )
+        const data = await res.json()
+        const names: string[] = data
+          .filter((r: { address?: { road?: string; house_number?: string } }) => r.address?.road && r.address?.house_number)
+          .map((r: { display_name?: string }) => r.display_name || '')
+          .filter(Boolean)
+        setSuggestions(names)
+        setShow(names.length > 0)
+      } catch { /* silent */ }
+    }, 400)
+  }, [value])
+
+  const inputCls = "w-full px-4 py-3 bg-stone-50 border rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-amber-300/50 focus:border-amber-300"
+
+  return (
+    <div className="relative">
+      <input
+        type="text"
+        value={value}
+        onChange={e => { onChange(e.target.value); setShow(true) }}
+        onBlur={() => setTimeout(() => setShow(false), 150)}
+        onFocus={() => suggestions.length > 0 && setShow(true)}
+        placeholder={placeholder}
+        className={inputCls}
+        style={{ borderColor: 'var(--border)', color: 'var(--text-main)' }}
+        autoComplete="off"
+      />
+      {show && suggestions.length > 0 && (
+        <ul className="absolute z-50 w-full mt-1 bg-white border rounded-xl shadow-xl overflow-hidden" style={{ borderColor: 'var(--border)' }}>
+          {suggestions.map((s, i) => (
+            <li
+              key={i}
+              onMouseDown={() => { onChange(s); setSuggestions([]); setShow(false) }}
+              className="px-4 py-2.5 text-sm cursor-pointer border-b last:border-0 hover:bg-stone-50 truncate"
+              style={{ color: 'var(--text-main)', borderColor: 'var(--border)' }}
+              title={s}
+            >
+              {s}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+// ── Stat row ──────────────────────────────────────────────────────────────────
+function Row({ label, value, valueClass = '' }: { label: string; value: string; valueClass?: string }) {
+  return (
+    <div className="flex justify-between items-center py-2 border-b last:border-0" style={{ borderColor: 'var(--border)' }}>
+      <span className="text-sm" style={{ color: 'var(--text-muted)' }}>{label}</span>
+      <span className={`text-sm font-semibold ${valueClass}`} style={!valueClass ? { color: 'var(--text-main)' } : undefined}>{value}</span>
+    </div>
+  )
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+export default function Compare() {
+  const { t, lang } = useLanguage()
+  const profiles = t.form.profiles
+
+  const [addresses, setAddresses] = useState(['', ''])
+  const [prices, setPrices]       = useState(['', ''])
+  const [profile, setProfile]     = useState('balanced')
+  const [loading, setLoading]     = useState(false)
+  const [result, setResult]       = useState<CompareResponse | null>(null)
+  const [error, setError]         = useState<string | null>(null)
+  const [progress, setProgress]   = useState(0)
+
+  const setAddr = (i: number, v: string) => { const a = [...addresses]; a[i] = v; setAddresses(a) }
+  const setPrice = (i: number, v: string) => { const p = [...prices]; p[i] = v; setPrices(p) }
+
+  const addProperty = () => {
+    if (addresses.length < 3) { setAddresses([...addresses, '']); setPrices([...prices, '']) }
   }
 
-  const removeAddress = (i: number) => {
+  const removeProperty = (i: number) => {
     setAddresses(addresses.filter((_, idx) => idx !== i))
     setPrices(prices.filter((_, idx) => idx !== i))
   }
 
-  const handleSubmit = async () => {
-    const filled = addresses.filter(a => a.trim())
-    if (filled.length < 2) { setError('Enter at least 2 addresses.'); return }
+  const handleCompare = async () => {
+    const filled = addresses.map((a, i) => ({ addr: a.trim(), price: prices[i] })).filter(x => x.addr)
+    if (filled.length < 2) { setError(lang === 'zh' ? '请至少输入2个地址' : 'Please enter at least 2 addresses.'); return }
     setError(null)
     setLoading(true)
     setResult(null)
+    setProgress(0)
+    const ticker = setInterval(() => setProgress(p => p < 85 ? p + Math.random() * 6 : p), 900)
     try {
       const req: CompareRequest = {
-        addresses: filled,
-        listing_prices: prices.slice(0, filled.length).map(p => parseFloat(p) || 0).filter(Boolean),
+        addresses: filled.map(x => x.addr),
+        listing_prices: filled.map(x => parseFloat(x.price) || 0).filter(Boolean),
         buyer_profile: profile,
       }
       const data = await compareProperties(req)
-      setResult(data)
+      setProgress(100)
+      setTimeout(() => { setResult(data); setProgress(0) }, 300)
     } catch (e: unknown) {
-      setError((e as Error).message || 'Compare failed.')
+      setError((e as Error).message || (lang === 'zh' ? '对比失败，请重试' : 'Compare failed.'))
     } finally {
+      clearInterval(ticker)
       setLoading(false)
     }
   }
 
+  const labels = ['A', 'B', 'C']
+  const propLabel = (i: number) => lang === 'zh' ? `房产 ${labels[i]}` : `Property ${labels[i]}`
+  const addLabel  = lang === 'zh' ? '+ 添加第三套房产' : '+ Add 3rd property'
+  const compareLabel = loading ? (lang === 'zh' ? '分析中…' : 'Analysing…') : (lang === 'zh' ? '开始对比' : 'Compare')
+  const aiLabel = lang === 'zh' ? 'AI 推荐' : 'AI Recommendation'
+  const winnerLabel = lang === 'zh' ? '各维度优胜方：' : 'Winner by dimension:'
+
   return (
-    <div className="max-w-4xl mx-auto space-y-6 p-4">
+    <div className="max-w-4xl mx-auto space-y-6">
+      {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-white">Compare Properties</h1>
-        <p className="text-slate-400 text-sm mt-1">Side-by-side AI analysis for up to 3 properties.</p>
+        <h2 className="font-display text-2xl font-bold" style={{ color: 'var(--text-main)' }}>
+          {lang === 'zh' ? '房产对比' : 'Compare Properties'}
+        </h2>
+        <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
+          {lang === 'zh' ? '最多同时对比3套房产，AI给出综合推荐。' : 'Side-by-side AI analysis for up to 3 properties.'}
+        </p>
       </div>
 
       {/* Input form */}
-      <div className="bg-slate-800 border border-slate-700 rounded-2xl p-5 space-y-4">
+      <div className="card p-5 space-y-4">
         {addresses.map((addr, i) => (
-          <div key={i} className="flex gap-3">
-            <div className="flex-1 space-y-2">
-              <input
-                type="text"
-                placeholder={`Property ${String.fromCharCode(65 + i)} address`}
-                value={addr}
-                onChange={e => { const a = [...addresses]; a[i] = e.target.value; setAddresses(a) }}
-                className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-2.5 text-white text-sm placeholder-slate-400 focus:outline-none focus:border-indigo-500"
-              />
-              <input
-                type="number"
-                placeholder="Listing price (€) — optional"
-                value={prices[i]}
-                onChange={e => { const p = [...prices]; p[i] = e.target.value; setPrices(p) }}
-                className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-2 text-white text-sm placeholder-slate-400 focus:outline-none focus:border-indigo-500"
-              />
+          <div key={i} className="space-y-2">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0" style={{ backgroundColor: 'var(--accent)' }}>
+                {labels[i]}
+              </div>
+              <span className="text-sm font-medium" style={{ color: 'var(--text-sub)' }}>{propLabel(i)}</span>
+              {addresses.length > 2 && (
+                <button onClick={() => removeProperty(i)} className="ml-auto text-xs hover:text-red-500 transition-colors" style={{ color: 'var(--text-muted)' }}>✕ {lang === 'zh' ? '移除' : 'Remove'}</button>
+              )}
             </div>
-            {addresses.length > 2 && (
-              <button onClick={() => removeAddress(i)} className="text-slate-400 hover:text-red-400 text-sm px-2">✕</button>
-            )}
+            <AddressField
+              index={i}
+              value={addr}
+              onChange={v => setAddr(i, v)}
+              placeholder={lang === 'zh' ? `例如：Carrer de Mallorca 401, Barcelona` : `Property ${labels[i]} address`}
+            />
+            <input
+              type="number"
+              placeholder={lang === 'zh' ? '挂牌价格（€）——选填' : 'Listing price (€) — optional'}
+              value={prices[i]}
+              onChange={e => setPrice(i, e.target.value)}
+              className="w-full px-4 py-2.5 bg-stone-50 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-300/50 focus:border-amber-300"
+              style={{ borderColor: 'var(--border)', color: 'var(--text-main)' }}
+            />
           </div>
         ))}
 
-        <div className="flex items-center gap-3 flex-wrap">
+        {/* Progress bar */}
+        {loading && (
+          <div className="h-1 bg-stone-100 rounded-full overflow-hidden">
+            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${progress}%`, backgroundColor: 'var(--accent)' }} />
+          </div>
+        )}
+
+        <div className="flex items-center gap-3 flex-wrap pt-1">
           {addresses.length < 3 && (
-            <button onClick={addAddress} className="text-sm text-indigo-400 hover:text-indigo-300 border border-indigo-600 rounded-lg px-3 py-1.5">
-              + Add 3rd property
+            <button
+              onClick={addProperty}
+              className="text-sm font-medium px-3 py-1.5 rounded-lg border transition-colors hover:opacity-80"
+              style={{ borderColor: 'var(--accent)', color: 'var(--accent)' }}
+            >
+              {addLabel}
             </button>
           )}
 
           <select
             value={profile}
             onChange={e => setProfile(e.target.value)}
-            className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none"
+            className="px-3 py-1.5 text-sm rounded-lg border outline-none focus:ring-2 focus:ring-amber-300/50"
+            style={{ borderColor: 'var(--border)', color: 'var(--text-main)', backgroundColor: 'var(--bg-card)' }}
           >
-            {PROFILES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+            {profiles.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
           </select>
 
           <button
-            onClick={handleSubmit}
+            onClick={handleCompare}
             disabled={loading}
-            className="ml-auto bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-medium text-sm px-5 py-2 rounded-xl"
+            className="ml-auto px-6 py-2 text-sm font-semibold text-white rounded-xl transition-all disabled:opacity-50 hover:opacity-90"
+            style={{ backgroundColor: 'var(--accent)' }}
           >
-            {loading ? 'Analysing…' : 'Compare'}
+            {compareLabel}
           </button>
         </div>
 
-        {error && <p className="text-red-400 text-sm">{error}</p>}
+        {error && (
+          <div className="disclosure-red p-3 text-sm text-red-700">{error}</div>
+        )}
       </div>
 
       {/* Results */}
       {result && (
         <div className="space-y-5">
-          {/* AI comparison narrative */}
-          <div className="bg-slate-800 border border-indigo-700 rounded-2xl p-5 space-y-3">
-            <p className="text-xs text-indigo-400 uppercase tracking-wide font-semibold">AI Recommendation</p>
-            <p className="text-white font-semibold text-base">{result.comparison.recommendation}</p>
-            <p className="text-slate-300 text-sm leading-relaxed">{result.comparison.summary}</p>
-
+          {/* AI recommendation */}
+          <div className="card p-5 space-y-4" style={{ borderColor: '#E8D5C4' }}>
+            <div>
+              <p className="text-xs font-medium uppercase tracking-widest mb-1" style={{ color: 'var(--accent)' }}>{aiLabel}</p>
+              <p className="font-display text-lg font-semibold leading-snug" style={{ color: 'var(--text-main)' }}>
+                {result.comparison.recommendation}
+              </p>
+            </div>
+            <p className="text-sm leading-relaxed" style={{ color: 'var(--text-sub)' }}>
+              {result.comparison.summary}
+            </p>
             {Object.keys(result.comparison.winner_by_dimension).length > 0 && (
               <div>
-                <p className="text-xs text-slate-400 mb-2">Winner by dimension:</p>
+                <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>{winnerLabel}</p>
                 <div className="flex flex-wrap gap-2">
                   {Object.entries(result.comparison.winner_by_dimension).map(([dim, winner]) => (
-                    <span key={dim} className="text-xs bg-slate-700 px-2 py-1 rounded-lg">
-                      <span className="text-slate-400">{dim}:</span>{' '}
-                      <span className="text-white font-medium">{winner}</span>
+                    <span key={dim} className="text-xs px-2.5 py-1 rounded-lg bg-stone-50 border" style={{ borderColor: 'var(--border)' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>{dim}:</span>{' '}
+                      <span className="font-semibold" style={{ color: 'var(--accent)' }}>{winner as string}</span>
                     </span>
                   ))}
                 </div>
@@ -149,65 +265,90 @@ export default function Compare() {
             )}
           </div>
 
-          {/* Side-by-side cards */}
-          <div className={`grid gap-4 ${result.analyses.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
-            {result.analyses.map((a, i) => (
-              <div key={i} className="bg-slate-800 border border-slate-700 rounded-2xl p-4 space-y-3">
-                <div>
-                  <p className="text-xs text-slate-400">Property {String.fromCharCode(65 + i)}</p>
-                  <p className="text-sm font-medium text-white truncate">{a.address}</p>
-                </div>
+          {/* Side-by-side property cards */}
+          <div className={`grid gap-4 ${result.analyses.length === 2 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 sm:grid-cols-3'}`}>
+            {result.analyses.map((a, i) => {
+              const gradeText = lang === 'zh'
+                ? (t.sections.narrative.grades as Record<string, string>)[a.grade] ?? a.grade
+                : a.grade
+              const riskText = lang === 'zh'
+                ? (t.sections.airbnb.risks as Record<string, string>)[a.airbnb_risk] ?? a.airbnb_risk
+                : a.airbnb_risk.replace('_', ' ')
 
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-bold text-white">{a.composite_score}</span>
-                  <span className={`text-sm font-semibold ${GRADE_COLORS[a.grade] ?? 'text-slate-300'}`}>{a.grade}</span>
-                </div>
-
-                <div className="space-y-1.5 text-sm">
-                  <Row label="Fair value" value={`€${a.fair_value.toLocaleString('es-ES')}`} />
-                  {a.vs_listing_pct != null && (
-                    <Row
-                      label="vs Listing"
-                      value={`${a.vs_listing_pct > 0 ? '+' : ''}${a.vs_listing_pct.toFixed(1)}%`}
-                      valueClass={a.vs_listing_pct > 5 ? 'text-red-400' : a.vs_listing_pct < -5 ? 'text-emerald-400' : 'text-slate-300'}
-                    />
-                  )}
-                  <Row label="Monthly costs" value={`€${a.hidden_costs_monthly}/mo`} />
-                  <Row label="Safety" value={`${Math.round(a.safety_score)}/100`} />
-                  <Row label="School" value={`${Math.round(a.school_score)}/100`} />
-                  <Row
-                    label="Tourist risk"
-                    value={a.airbnb_risk.replace('_', ' ')}
-                    valueClass={RISK_COLORS[a.airbnb_risk] ?? 'text-slate-300'}
-                  />
-                </div>
-
-                {a.key_risks.length > 0 && (
-                  <div>
-                    <p className="text-xs text-red-400 font-semibold mb-1">Risks</p>
-                    <ul className="space-y-1">
-                      {a.key_risks.slice(0, 2).map((r, j) => (
-                        <li key={j} className="text-xs text-slate-400 flex gap-1">
-                          <span className="text-red-400 shrink-0">▲</span>{r}
-                        </li>
-                      ))}
-                    </ul>
+              return (
+                <div key={i} className="card p-5 space-y-4">
+                  {/* Header */}
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0" style={{ backgroundColor: 'var(--accent)' }}>
+                      {labels[i]}
+                    </div>
+                    <p className="text-sm font-medium truncate" style={{ color: 'var(--text-sub)' }}>{a.address}</p>
                   </div>
-                )}
-              </div>
-            ))}
+
+                  {/* Score */}
+                  <div className="flex items-baseline gap-2">
+                    <span className="score-number text-4xl font-bold">{a.composite_score}</span>
+                    <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>/100</span>
+                    <span className={`ml-1 text-sm font-semibold ${GRADE_COLORS[a.grade] ?? ''}`}>{gradeText}</span>
+                  </div>
+
+                  {/* Stats */}
+                  <div>
+                    <Row label={lang === 'zh' ? '公允价值' : 'Fair value'} value={`€${a.fair_value.toLocaleString('es-ES')}`} />
+                    {a.vs_listing_pct != null && (
+                      <Row
+                        label={lang === 'zh' ? '对比挂牌价' : 'vs Listing'}
+                        value={`${a.vs_listing_pct > 0 ? '+' : ''}${a.vs_listing_pct.toFixed(1)}%`}
+                        valueClass={a.vs_listing_pct > 5 ? 'text-red-600' : a.vs_listing_pct < -5 ? 'text-emerald-600' : ''}
+                      />
+                    )}
+                    <Row label={lang === 'zh' ? '月度隐性费用' : 'Monthly costs'} value={`€${a.hidden_costs_monthly}/mo`} />
+                    <Row label={lang === 'zh' ? '治安评分' : 'Safety'} value={`${Math.round(a.safety_score)}/100`} />
+                    <Row label={lang === 'zh' ? '学校评分' : 'School'} value={`${Math.round(a.school_score)}/100`} />
+                    <Row
+                      label={lang === 'zh' ? '旅游公寓风险' : 'Tourist risk'}
+                      value={riskText}
+                      valueClass={RISK_COLORS[a.airbnb_risk] ?? ''}
+                    />
+                  </div>
+
+                  {/* Risks */}
+                  {a.key_risks.length > 0 && (
+                    <div className="bg-red-50 border border-red-100 rounded-xl p-3">
+                      <p className="text-xs font-semibold text-red-700 mb-2">
+                        {lang === 'zh' ? '主要风险' : 'Key risks'}
+                      </p>
+                      <ul className="space-y-1.5">
+                        {a.key_risks.slice(0, 2).map((r, j) => (
+                          <li key={j} className="text-xs text-red-600 flex gap-1.5 leading-snug">
+                            <span className="shrink-0 mt-0.5">▲</span>{r}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Positives */}
+                  {a.key_positives.length > 0 && (
+                    <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3">
+                      <p className="text-xs font-semibold text-emerald-700 mb-2">
+                        {lang === 'zh' ? '主要亮点' : 'Key positives'}
+                      </p>
+                      <ul className="space-y-1.5">
+                        {a.key_positives.slice(0, 2).map((r, j) => (
+                          <li key={j} className="text-xs text-emerald-600 flex gap-1.5 leading-snug">
+                            <span className="shrink-0 mt-0.5">✓</span>{r}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
-    </div>
-  )
-}
-
-function Row({ label, value, valueClass = 'text-slate-300' }: { label: string; value: string; valueClass?: string }) {
-  return (
-    <div className="flex justify-between">
-      <span className="text-slate-400">{label}</span>
-      <span className={`font-medium ${valueClass}`}>{value}</span>
     </div>
   )
 }
