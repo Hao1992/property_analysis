@@ -65,7 +65,7 @@ body {
 
 /* ── Print / PDF styles ── */
 @media print {
-  @page { margin: 18mm 14mm; size: A4; }
+  @page { margin: 14mm 12mm; size: A4; }
 
   header, footer, nav,
   .print\:hidden,
@@ -73,19 +73,28 @@ body {
 
   body { background: #fff !important; font-size: 11px; }
 
+  /* Remove shadows, tighten spacing — let cards flow naturally across pages */
   .card {
     box-shadow: none !important;
     border: 1px solid #E8E0D5 !important;
-    break-inside: avoid;
-    margin-bottom: 8px;
+    margin-bottom: 6px !important;
+    padding: 12px !important;
   }
 
-  .grid { gap: 8px !important; }
+  /* Tighten vertical rhythm */
+  #report-root { gap: 6px !important; }
+  #report-root > * + * { margin-top: 6px !important; }
+  .space-y-4 > * + *, .space-y-5 > * + * { margin-top: 6px !important; }
 
-  /* Recharts / Leaflet maps — avoid page breaks inside */
-  .recharts-wrapper, .leaflet-container { break-inside: avoid; }
+  .grid { gap: 6px !important; }
+
+  /* Small atomic elements shouldn't break mid-way */
+  .disclosure-red, .disclosure-yellow, .disclosure-green, .disclosure-info { break-inside: avoid; }
+  .recharts-wrapper { break-inside: avoid; }
+
+  /* Hide heavy/interactive elements */
+  .leaflet-container { display: none !important; }
 
   h2, h3 { break-after: avoid; }
-
   a { color: inherit; text-decoration: none; }
 }
