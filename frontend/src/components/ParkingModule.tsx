@@ -44,7 +44,7 @@ export default function ParkingModule({ data }: Props) {
         </span>
         {data.zone_monthly_eur != null && (
           <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            {pk.streetCost} <span className="font-semibold" style={{ color: 'var(--text-main)' }}>{fmt(data.zone_monthly_eur)}/mo</span>
+            {pk.streetCost} <span className="font-semibold" style={{ color: 'var(--text-main)' }}>{fmt(data.zone_monthly_eur)}{pk.perMonth}</span>
             {' '}
             <span style={{ color: 'var(--text-muted)' }}>({pk.streetEstimate})</span>
           </span>
@@ -64,9 +64,9 @@ export default function ParkingModule({ data }: Props) {
               <div key={i} className="flex items-center justify-between text-sm border rounded-lg px-3 py-2" style={{ borderColor: 'var(--border)' }}>
                 <div>
                   <span style={{ color: 'var(--text-main)' }}>{g.name}</span>
-                  <span className="ml-2 text-xs" style={{ color: 'var(--text-muted)' }}>{Math.round(g.distance_m)}m away</span>
+                  <span className="ml-2 text-xs" style={{ color: 'var(--text-muted)' }}>{Math.round(g.distance_m)}{pk.distAway}</span>
                 </div>
-                <span className="font-semibold text-xs" style={{ color: 'var(--text-sub)' }}>{fmt(g.monthly_est_eur)}/mo</span>
+                <span className="font-semibold text-xs" style={{ color: 'var(--text-sub)' }}>{fmt(g.monthly_est_eur)}{pk.perMonth}</span>
               </div>
             ))}
           </div>
@@ -83,11 +83,11 @@ export default function ParkingModule({ data }: Props) {
             </span>
             {data.recommended_monthly_eur != null && data.recommended_monthly_eur > 0 && (
               <span className="text-sm font-bold" style={{ color: 'var(--text-main)' }}>
-                {fmt(data.recommended_monthly_eur)}<span className="text-xs font-normal" style={{ color: 'var(--text-muted)' }}>/mo</span>
+                {fmt(data.recommended_monthly_eur)}<span className="text-xs font-normal" style={{ color: 'var(--text-muted)' }}>{pk.perMonth}</span>
               </span>
             )}
             {(data.recommended_monthly_eur === 0 || data.recommended_monthly_eur == null) && (
-              <span className="text-sm font-bold text-green-600">Free</span>
+              <span className="text-sm font-bold text-green-600">{pk.zoneTypes.free}</span>
             )}
           </div>
         </div>

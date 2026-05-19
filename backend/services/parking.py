@@ -1,7 +1,10 @@
 """Parking analysis: zone type by district + nearby OSM garages."""
 import httpx
+import logging
 import math
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 _HEADERS = {"User-Agent": "BeyondPrice/2.0 parking-analysis"}
 OVERPASS_URL = "https://overpass-api.de/api/interpreter"
@@ -51,12 +54,14 @@ def _distance_m(lat1, lng1, lat2, lng2) -> float:
 
 
 async def _fetch_garages(lat: float, lng: float, radius: int = 400) -> list[dict]:
+    # Case-insensitive regex (,i flag) catches OSM taggers who write "Multi-storey" etc.
+    # Omit parking_entrance nodes — they include residential building entrances that are
+    # not public garages and have no access tag, so they slip past the access filter.
     query = f"""
 [out:json][timeout:20];
 (
-  node["amenity"="parking"]["parking"~"multi-storey|underground"](around:{radius},{lat},{lng});
-  way["amenity"="parking"]["parking"~"multi-storey|underground"](around:{radius},{lat},{lng});
-  node["amenity"="parking_entrance"](around:{radius},{lat},{lng});
+  node["amenity"="parking"]["parking"~"multi-storey|underground",i](around:{radius},{lat},{lng});
+  way["amenity"="parking"]["parking"~"multi-storey|underground",i](around:{radius},{lat},{lng});
 );
 out center tags;
 """
@@ -99,7 +104,10 @@ async def get_parking_analysis(
     has_car: bool,
 ) -> dict:
     garages_raw = await _fetch_garages(lat, lng)
-    garage_monthly = _DISTRICT_GARAGE_MONTHLY.get(district, 150)
+    garage_monthly = _DISTRICT_GARAGE_MONTHLY.get(district)
+    if garage_monthly is None:
+        logger.warning("Unknown district %r — using fallback parking rates", district)
+        garage_monthly = 150
     zone_type = _DISTRICT_ZONE.get(district, "zona_azul")
     hourly = _ZONE_HOURLY.get(zone_type, 2.50)
     zone_monthly = round(hourly * _MONTHLY_HOURS) if hourly > 0 else None
@@ -133,7 +141,7 @@ async def get_parking_analysis(
 
     return {
         "has_private_parking":     has_private_parking,
-        "nearby_garages_count":    len(garages_raw),
+        "nearby_garages_count":    len(nearby),  # count matches what UI displays
         "nearby_garages":          nearby,
         "zone_type":               zone_type,
         "zone_monthly_eur":        zone_monthly,

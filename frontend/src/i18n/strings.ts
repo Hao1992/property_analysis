@@ -359,6 +359,8 @@ const strings = {
         notInCosts: 'Included in monthly cost total',
         notInCostsAction: 'For reference — indicate car ownership in buyer profile to factor into costs',
         source: 'Garage locations from OpenStreetMap',
+        perMonth: '/mo',
+        distAway: 'm away',
       },
       neighborhood: {
         label: 'What\'s Nearby',
@@ -782,6 +784,8 @@ const strings = {
         notInCosts: '已计入月度费用合计',
         notInCostsAction: '仅供参考——在买家偏好中填写是否有车，可将停车费纳入费用估算',
         source: '车库位置来源：OpenStreetMap',
+        perMonth: '/月',
+        distAway: '米',
       },
       neighborhood: {
         label: '周边配套',

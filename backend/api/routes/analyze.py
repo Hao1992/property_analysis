@@ -217,7 +217,7 @@ async def _run_full_analysis(
     valuation_data    = valuation.estimate_fair_value(median_ppm2, prop_data, listing_price)
     _parking_m = (
         parking_data["recommended_monthly_eur"]
-        if parking_data["parking_needed"] and parking_data["recommended_monthly_eur"]
+        if parking_data["parking_needed"] and parking_data["recommended_monthly_eur"] is not None
         else None
     )
     hidden_costs_data = estimate_hidden_costs(prop_data, listing_price, parking_monthly=_parking_m)
