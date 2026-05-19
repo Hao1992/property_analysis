@@ -59,12 +59,15 @@ def _format_poi_categories(enriched: dict) -> list[PoiCategory]:
     return result
 
 
-def _generate_negotiation_tips(val: dict, score: dict, prop: dict) -> list[str]:
+def _generate_negotiation_tips(val: dict, score: dict, prop: dict, language: str = "en") -> list[str]:
     tips = []
     delta = val.get("vs_listing_pct") or 0
+    zh = language == "zh"
 
     if delta > 10:
         tips.append(
+            f"挂牌价高于公允价值估算 {delta:.0f}%，建议从公允价值（€{val['fair_value']:,.0f}）开始议价。"
+            if zh else
             f"Property is listed {delta:.0f}% above estimated fair value. "
             f"Open negotiations at fair value (€{val['fair_value']:,.0f})."
         )
@@ -72,6 +75,8 @@ def _generate_negotiation_tips(val: dict, score: dict, prop: dict) -> list[str]:
     cert = (prop.get("energy_cert") or "").strip().upper()
     if cert in ("E", "F", "G"):
         tips.append(
+            f"能耗证书 {cert} 级，根据西班牙2033年节能强制令需进行改造，预计费用 €9,000–€28,000，可作为议价筹码。"
+            if zh else
             f"Energy cert {cert} will require upgrades under Spain's 2033 efficiency mandate. "
             "Estimated cost €9,000–€28,000 — use this as a negotiation lever."
         )
@@ -79,23 +84,32 @@ def _generate_negotiation_tips(val: dict, score: dict, prop: dict) -> list[str]:
     year = prop.get("year_built")
     if year and 1960 <= year < 1975:
         tips.append(
+            '楼房建于1960–1975年"发展年代"，是铝水泥（aluminosis）和石棉风险最高的建造时期，签订定金合同前务必要求专业结构检测报告。'
+            if zh else
             "Building dates from the 1960–1975 'desarrollismo' era — highest risk period "
             "for aluminosis (alumina cement) and asbestos. Request a specialist structural "
             "survey before signing arras."
         )
     elif year and (2026 - year) > 45 and prop.get("ite_status") != "FAVORABLE":
         tips.append(
+            "楼龄超过45年，ITE（建筑技术检查）状态未经确认，签约前索取ITE报告，将不确定性作为议价依据。"
+            if zh else
             "Building over 45 years old without a confirmed favourable ITE inspection. "
             "Request the ITE report before signing arras — use uncertainty as leverage."
         )
 
     if delta <= -5:
         tips.append(
+            "房价低于周边可比市场，仍可就任何结构或文件问题进行议价。"
+            if zh else
             "Property appears undervalued vs. neighbourhood comparables. "
             "Still negotiate on any structural or documentation issues found."
         )
 
-    return tips or ["Property appears fairly priced. Focus due diligence on ITE report and title search."]
+    return tips or [
+        "价格基本合理，重点应放在索取ITE报告和产权调查上。" if zh
+        else "Property appears fairly priced. Focus due diligence on ITE report and title search."
+    ]
 
 
 @cached(ttl=86400)
@@ -217,7 +231,7 @@ async def _run_full_analysis(
         "geo":              geo,
         "district":         district,
         "census_section":   census_section,
-        "negotiation_tips": _generate_negotiation_tips(valuation_data, score_data, prop_data),
+        "negotiation_tips": _generate_negotiation_tips(valuation_data, score_data, prop_data, language=language),
         "narrative":        narrative_data,
         "listing_price":    listing_price,
     }

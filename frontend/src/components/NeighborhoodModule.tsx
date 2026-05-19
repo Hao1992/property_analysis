@@ -3,6 +3,7 @@ import type { PoiCategory } from '../types/analysis'
 import SourceBadge from './SourceBadge'
 import TransitMap from './TransitMap'
 import RouteDetail from './RouteDetail'
+import { useLanguage } from '../contexts/LanguageContext'
 
 // Barcelona bus route destinations (key routes)
 const BUS_ROUTE_DESC: Record<string, string> = {
@@ -38,22 +39,6 @@ const CATEGORY_ICONS: Record<string, string> = {
   marketplace:     '🏪',
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  supermarket:     'Supermarket',
-  restaurant:      'Restaurant / Café',
-  pharmacy:        'Pharmacy',
-  school:          'School',
-  park:            'Park / Garden',
-  parking:         'Parking',
-  bus_stop:        'Bus Stop',
-  metro:           'Metro',
-  hospital:        'Hospital / Clinic',
-  gym:             'Gym / Sports',
-  library:         'Library',
-  cultural_centre: 'Cultural Centre',
-  theatre:         'Theatre / Cinema',
-  marketplace:     'Market',
-}
 
 const Stars = ({ rating }: { rating?: number }) => {
   if (!rating) return null
@@ -67,7 +52,7 @@ const Stars = ({ rating }: { rating?: number }) => {
   )
 }
 
-const CountBadge = ({ count, category }: { count: number; category: string }) => {
+function CountBadge({ count, category, label }: { count: number; category: string; label: string }) {
   const color =
     category === 'supermarket' && count === 0 ? 'bg-red-100 text-red-600' :
     count === 0 ? 'bg-gray-100 text-gray-400' :
@@ -76,7 +61,7 @@ const CountBadge = ({ count, category }: { count: number; category: string }) =>
 
   return (
     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${color}`}>
-      {count} nearby
+      {label}
     </span>
   )
 }
@@ -84,6 +69,9 @@ const CountBadge = ({ count, category }: { count: number; category: string }) =>
 const TRANSIT_CATS = new Set(['metro', 'bus_stop'])
 
 export default function NeighborhoodModule({ categories, lat, lng }: Props) {
+  const { t } = useLanguage()
+  const nb = t.sections.neighborhood
+  const cats = nb.categories as Record<string, string>
   const [activeRoute, setActiveRoute] = useState<{ ref: string; type: string } | null>(null)
 
   const transit = categories.filter(c => TRANSIT_CATS.has(c.category))
@@ -101,13 +89,16 @@ export default function NeighborhoodModule({ categories, lat, lng }: Props) {
   const sortedTransit = [...transit].sort((a) => a.category === 'metro' ? -1 : 1)
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-6">
+    <div className="card p-5 space-y-6">
 
       {/* Transit — separate prominent section */}
       {sortedTransit.some(c => c.total_count > 0) && (
         <div>
-          <h2 className="text-lg font-semibold mb-1">Public Transport</h2>
-          <p className="text-xs text-gray-400 mb-4">Click route badge to see all stops · 500m radius</p>
+          <div className="mb-1">
+            <p className="text-xs font-medium uppercase tracking-widest mb-1" style={{ color: 'var(--accent)' }}>{nb.label}</p>
+            <h3 className="font-semibold" style={{ color: 'var(--text-main)' }}>{nb.transit}</h3>
+          </div>
+          <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>{nb.transitSub}</p>
           <TransitMap lat={lat} lng={lng} metro={metro} busStop={busStop} />
 
           <div className="space-y-5 mt-5">
@@ -116,8 +107,8 @@ export default function NeighborhoodModule({ categories, lat, lng }: Props) {
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <span className="text-xl">🚇</span>
-                  <span className="font-medium text-sm">Metro / Train</span>
-                  <CountBadge count={metro.total_count} category="metro" />
+                  <span className="font-medium text-sm" style={{ color: 'var(--text-main)' }}>{nb.metroTrain}</span>
+                  <CountBadge count={metro.total_count} category="metro" label={nb.nearby(metro.total_count)} />
                 </div>
                 <div className="space-y-2">
                   {metro.top_items.map((item, i) => (
@@ -159,8 +150,8 @@ export default function NeighborhoodModule({ categories, lat, lng }: Props) {
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <span className="text-xl">🚌</span>
-                    <span className="font-medium text-sm">Bus routes within 500m</span>
-                    <CountBadge count={busStop.total_count} category="bus_stop" />
+                    <span className="font-medium text-sm" style={{ color: 'var(--text-main)' }}>{nb.busWithin}</span>
+                    <CountBadge count={busStop.total_count} category="bus_stop" label={nb.nearby(busStop.total_count)} />
                   </div>
 
                   {/* Unique routes */}
@@ -175,15 +166,15 @@ export default function NeighborhoodModule({ categories, lat, lng }: Props) {
                             title={`View all stops on route ${r}`}
                           >{r}</button>
                           <span className="text-sm text-gray-700 flex-1 truncate">{desc ?? r}</span>
-                          <span className="text-xs text-gray-400 shrink-0">nearest {nearestM}m</span>
+                          <span className="text-xs shrink-0" style={{ color: 'var(--text-muted)' }}>{nb.nearestM(nearestM)}</span>
                         </div>
                       )
                     })}
                   </div>
 
                   {/* Nearest stops (no route repetition) */}
-                  <div className="border-t border-gray-100 pt-3">
-                    <p className="text-xs text-gray-400 mb-2">Nearest stops</p>
+                  <div className="border-t pt-3" style={{ borderColor: 'var(--border)' }}>
+                    <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>{nb.nearestStops}</p>
                     <div className="space-y-1">
                       {busStop.top_items.slice(0, 4).map((item, i) => (
                         <div key={i} className="flex items-center justify-between text-xs">
@@ -202,63 +193,60 @@ export default function NeighborhoodModule({ categories, lat, lng }: Props) {
 
       {/* Amenities grid */}
       <div>
-        <h2 className="text-lg font-semibold mb-1">Neighbourhood Amenities</h2>
-        <p className="text-xs text-gray-400 mb-4">Within 500m radius</p>
-      <div className="grid grid-cols-2 gap-4">
-        {sortedAmenities.map(cat => (
-          <div key={cat.category} className={`border rounded-xl p-4 ${cat.total_count === 0 ? 'border-gray-100 bg-gray-50' : 'border-gray-100'}`}>
-            {/* Header */}
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <span className="text-xl">{CATEGORY_ICONS[cat.category] ?? '📍'}</span>
-                <span className="font-medium text-sm">{CATEGORY_LABELS[cat.category] ?? cat.category}</span>
+        <div className="mb-1">
+          <p className="text-xs font-medium uppercase tracking-widest mb-1" style={{ color: 'var(--accent)' }}>{nb.label}</p>
+          <h3 className="font-semibold" style={{ color: 'var(--text-main)' }}>{nb.amenities}</h3>
+        </div>
+        <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>{nb.radius}</p>
+        <div className="grid grid-cols-2 gap-4">
+          {sortedAmenities.map(cat => (
+            <div key={cat.category} className={`border rounded-xl p-4 ${cat.total_count === 0 ? 'bg-stone-50' : 'bg-white'}`} style={{ borderColor: 'var(--border)' }}>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">{CATEGORY_ICONS[cat.category] ?? '📍'}</span>
+                  <span className="font-medium text-sm" style={{ color: 'var(--text-main)' }}>{cats[cat.category] ?? cat.category}</span>
+                </div>
+                <CountBadge count={cat.total_count} category={cat.category} label={nb.nearby(cat.total_count)} />
               </div>
-              <CountBadge count={cat.total_count} category={cat.category} />
-            </div>
 
-            {/* Category avg rating */}
-            {cat.avg_rating && (
-              <div className="mb-3 flex items-center gap-2">
-                <Stars rating={cat.avg_rating} />
-                {cat.total_reviews && (
-                  <span className="text-xs text-gray-400">({cat.total_reviews.toLocaleString()} reviews)</span>
-                )}
-              </div>
-            )}
+              {cat.avg_rating && (
+                <div className="mb-3 flex items-center gap-2">
+                  <Stars rating={cat.avg_rating} />
+                  {cat.total_reviews && (
+                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>({cat.total_reviews.toLocaleString()} {nb.reviews})</span>
+                  )}
+                </div>
+              )}
 
-            {/* Top items */}
-            {cat.top_items.length > 0 ? (
-              <div className="space-y-2.5">
-                {cat.top_items.map((item, i) => (
-                  <div key={i} className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium text-gray-800 truncate">{item.name}</p>
-                      {item.google_rating && <Stars rating={item.google_rating} />}
-                      {/* Transit route numbers */}
-                      {item.routes && item.routes.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {item.routes.slice(0, 8).map(r => (
-                            <span key={r} className="text-xs bg-blue-600 text-white px-1.5 py-0.5 rounded font-mono font-bold">
-                              {r}
-                            </span>
-                          ))}
-                          {item.routes.length > 8 && (
-                            <span className="text-xs text-gray-400">+{item.routes.length - 8} more</span>
-                          )}
-                        </div>
-                      )}
+              {cat.top_items.length > 0 ? (
+                <div className="space-y-2.5">
+                  {cat.top_items.map((item, i) => (
+                    <div key={i} className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium truncate" style={{ color: 'var(--text-main)' }}>{item.name}</p>
+                        {item.google_rating && <Stars rating={item.google_rating} />}
+                        {item.routes && item.routes.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {item.routes.slice(0, 8).map(r => (
+                              <span key={r} className="text-xs bg-blue-600 text-white px-1.5 py-0.5 rounded font-mono font-bold">{r}</span>
+                            ))}
+                            {item.routes.length > 8 && (
+                              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{nb.moreRoutes(item.routes.length - 8)}</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <span className="text-xs shrink-0 mt-0.5" style={{ color: 'var(--text-muted)' }}>{item.distance_m}m</span>
                     </div>
-                    <span className="text-xs text-gray-400 shrink-0 mt-0.5">{item.distance_m}m</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-gray-400 italic">None found within 500m</p>
-            )}
-          </div>
-        ))}
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs italic" style={{ color: 'var(--text-muted)' }}>{nb.noneFound}</p>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
-      </div>  {/* end amenities */}
 
       <SourceBadge sources={[{ label: 'OpenStreetMap via Overpass API', url: 'https://overpass-turbo.eu/', note: 'POI locations within 500m' }]} />
 

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { CompositeScore, DimensionScore } from '../types/analysis'
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tooltip } from 'recharts'
+import { useLanguage } from '../contexts/LanguageContext'
 
 interface Props { score: CompositeScore }
 
@@ -13,24 +14,10 @@ const BCN_PERCENTILE = (score: number): number => {
   if (score >= 40) return 12; return 6
 }
 
-const DIM_SHORT: Record<string, string> = {
-  Convenience: 'Conv.', Safety: 'Safety', Property: 'Prop.', Market: 'Market',
-  Risk: 'Risk', Liveability: 'Live.', HiddenCosts: 'Costs', Intangible: 'Intang.',
-}
-
-const DIM_DESC: Record<string, { title: string; what: string }> = {
-  Convenience: { title: 'Convenience',        what: 'Metro/bus proximity and frequency, supermarkets, pharmacies, hospitals nearby.' },
-  Safety:      { title: 'Safety',             what: 'District crime indices: theft, vehicle crime, vandalism, night safety. BCN Open Data 2024.' },
-  Property:    { title: 'Property condition', what: 'Building age, era risks (aluminosis, asbestos), orientation, energy certificate.' },
-  Market:      { title: 'Market positioning', what: 'Listing price vs INE median for this census section. Rental yield and liquidity.' },
-  Risk:        { title: 'Risk factors',       what: 'Structural risks, flood/seismic zone, heritage listing restrictions, rent control status.' },
-  Liveability: { title: 'Liveability',        what: 'Noise levels (day/night/weekend), school quality, neighbourhood trajectory.' },
-  HiddenCosts: { title: 'Hidden costs',       what: 'IBI tax, community fees, derrama risk, energy upgrade mandate.' },
-  Intangible:  { title: 'Intangible quality', what: 'Cultural density, traditional markets, local vs chain commerce ratio, green space quality.' },
-}
-
 function DimPanel({ d, onClose }: { d: DimensionScore; onClose: () => void }) {
-  const desc = DIM_DESC[d.name]
+  const { t } = useLanguage()
+  const sc = t.sections.scoreCard
+  const desc = (sc.dimDesc as Record<string, { title: string; what: string }>)[d.name]
   const subEntries = Object.entries(d.sub_scores ?? {})
     .filter(([, v]) => v !== null && v !== undefined)
     .sort(([, a], [, b]) => (b as number) - (a as number))
@@ -65,37 +52,41 @@ function DimPanel({ d, onClose }: { d: DimensionScore; onClose: () => void }) {
         </div>
       )}
       <p style={{ color: 'var(--text-muted)' }}>
-        Counts for <span className="font-semibold" style={{ color: 'var(--text-main)' }}>{(d.weight * 100).toFixed(0)}%</span> of your total score
+        {sc.countsFor(parseFloat((d.weight * 100).toFixed(0)))}
       </p>
     </div>
   )
 }
 
 export default function ScoreCard({ score }: Props) {
+  const { t } = useLanguage()
+  const sc = t.sections.scoreCard
   const [openDim, setOpenDim] = useState<string | null>(null)
 
-  const radarData = score.dimensions.map(d => ({ subject: DIM_SHORT[d.name] ?? d.name, score: d.score, fullMark: 100 }))
+  const dimShort = sc.dimShort as Record<string, string>
+  const radarData = score.dimensions.map(d => ({ subject: dimShort[d.name] ?? d.name, score: d.score, fullMark: 100 }))
   const confPct      = Math.round((score.confidence ?? 1) * 100)
   const missingDims  = score.dimensions.filter(d => d.score === null || d.score === undefined)
   const percentile   = BCN_PERCENTILE(score.composite)
   const confStyle    = confPct >= 80 ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : confPct >= 60 ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-red-50 border-red-200 text-red-700'
 
+  const penalties = t.sections.score.penalties as Record<string, string>
+
   return (
     <div className="card p-6">
       <div className="flex items-start justify-between mb-4 gap-4">
         <div className="flex-1">
-          <p className="text-xs font-medium uppercase tracking-widest mb-2" style={{ color: 'var(--accent)' }}>Composite Score</p>
+          <p className="text-xs font-medium uppercase tracking-widest mb-2" style={{ color: 'var(--accent)' }}>{t.sections.score.label}</p>
           <div className="flex items-baseline gap-2">
             <span className="score-number text-6xl font-bold">{score.composite}</span>
             <span className="text-xl" style={{ color: 'var(--text-muted)' }}>/100</span>
           </div>
-          {/* BCN benchmark bar */}
           <div className="mt-3 flex items-center gap-2">
             <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-stone-100">
               <div className="h-full rounded-full" style={{ width: `${percentile}%`, backgroundColor: 'var(--accent)' }} />
             </div>
             <span className="text-xs shrink-0" style={{ color: 'var(--text-muted)' }}>
-              better than <span className="font-semibold" style={{ color: 'var(--text-main)' }}>{percentile}%</span> of BCN
+              {t.sections.score.better} <span className="font-semibold" style={{ color: 'var(--text-main)' }}>{percentile}</span>{t.sections.score.ofBCN}
             </span>
           </div>
         </div>
@@ -115,19 +106,17 @@ export default function ScoreCard({ score }: Props) {
         </div>
       </div>
 
-      {/* Confidence badge */}
       {confPct < 90 && (
         <div className={`mb-4 flex items-start gap-2 border rounded-lg px-3 py-2 text-xs ${confStyle}`}>
-          <span className="font-semibold shrink-0">{confPct}% data</span>
+          <span className="font-semibold shrink-0">{t.sections.score.confidence(confPct)}</span>
           <span className="leading-relaxed">
-            Score based on {confPct}% of available data points.
-            {missingDims.length > 0 && ` Missing: ${missingDims.map(d => d.name).join(', ')}.`}
-            {' '}Adding property details (year built, surface) will improve accuracy.
+            {t.sections.score.confidenceSub(confPct)}
+            {missingDims.length > 0 && ` ${t.sections.score.missing} ${missingDims.map(d => (sc.dimDesc as Record<string, { title: string }>)[d.name]?.title ?? d.name).join(', ')}.`}
+            {' '}{t.sections.score.addDetails}
           </span>
         </div>
       )}
 
-      {/* Dimension tiles */}
       <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
         {score.dimensions.map(d => {
           const isOpen   = openDim === d.name
@@ -137,37 +126,29 @@ export default function ScoreCard({ score }: Props) {
               key={d.name}
               onClick={() => setOpenDim(isOpen ? null : d.name)}
               className={`text-center rounded-xl py-2.5 px-1 transition-all border cursor-pointer
-                ${isOpen
-                  ? 'border-2 shadow-sm'
-                  : hasScore
-                    ? 'hover:shadow-sm'
-                    : 'border-dashed'
-                }`}
+                ${isOpen ? 'border-2 shadow-sm' : hasScore ? 'hover:shadow-sm' : 'border-dashed'}`}
               style={{
                 borderColor: isOpen ? 'var(--accent)' : hasScore ? 'var(--border)' : '#D6D3D1',
                 backgroundColor: isOpen ? '#FEF9F5' : hasScore ? '#fff' : '#FAFAF8',
               }}
-              title={`Click to see ${d.name} breakdown`}
             >
               <div className={`text-xl font-bold ${hasScore ? SCORE_TEXT(d.score as number) : 'text-stone-300'}`}>
                 {hasScore ? Math.round(d.score as number) : '—'}
               </div>
-              <div className="text-xs mt-0.5 leading-tight" style={{ color: 'var(--text-muted)' }}>{DIM_SHORT[d.name] ?? d.name}</div>
+              <div className="text-xs mt-0.5 leading-tight" style={{ color: 'var(--text-muted)' }}>{dimShort[d.name] ?? d.name}</div>
             </button>
           )
         })}
 
-        {/* Expanded panel */}
         {openDim && (() => {
           const dim = score.dimensions.find(d => d.name === openDim)
           return dim ? <DimPanel d={dim} onClose={() => setOpenDim(null)} /> : null
         })()}
       </div>
 
-      {/* Penalties */}
       {Object.entries(score.penalty_multipliers).some(([, v]) => v !== 1) && (
         <div className="mt-4 pt-4 border-t space-y-1.5" style={{ borderColor: 'var(--border)' }}>
-          <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Score adjustments</p>
+          <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>{t.sections.score.adjustments}</p>
           {Object.entries(score.penalty_multipliers)
             .filter(([, v]) => v !== 1)
             .map(([key, val]) => {
@@ -175,16 +156,14 @@ export default function ScoreCard({ score }: Props) {
               const pts   = Math.round(pre * (val - 1))
               const pct   = Math.round(Math.abs(1 - val) * 100)
               const isBon = val > 1
-              const labels: Record<string, string> = {
-                overpriced:         'Listed above fair value estimate',
-                critical_risk:      'Critical structural or safety risk detected',
-                derrama_risk:       'High risk of upcoming major repair levy',
-                tourist_saturation: isBon ? 'Tourist demand (STR premium)' : 'High tourist apartment pressure',
-              }
+              const labelKey = key === 'tourist_saturation'
+                ? (isBon ? 'tourist_saturation_bonus' : 'tourist_saturation_penalty')
+                : key
+              const label = penalties[labelKey] ?? key.replace(/_/g, ' ')
               return (
                 <div key={key} className={`flex items-center justify-between rounded-lg px-3 py-2 text-xs border
                   ${isBon ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
-                  <span className={isBon ? 'text-emerald-700' : 'text-red-700'}>{labels[key] ?? key.replace(/_/g, ' ')}</span>
+                  <span className={isBon ? 'text-emerald-700' : 'text-red-700'}>{label}</span>
                   <span className={`font-semibold ml-3 shrink-0 ${isBon ? 'text-emerald-600' : 'text-red-600'}`}>
                     {isBon ? '+' : ''}{pts} pts ({isBon ? '+' : '-'}{pct}%)
                   </span>

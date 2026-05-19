@@ -43,7 +43,7 @@ export default function HiddenCostBreakdown({ data }: Props) {
         <Row
           label={costs.rows.derrama}
           value={`${fmt(data.derrama_provision_monthly_eur)}/mo`}
-          sub={`${costs.rows.derramaRisk} ${data.derrama_risk_label.toUpperCase()}`}
+          sub={`${costs.rows.derramaRisk} ${(t.sections.derramaLevels as Record<string,string>)[data.derrama_risk_label] ?? data.derrama_risk_label.toUpperCase()}`}
         />
       </div>
 

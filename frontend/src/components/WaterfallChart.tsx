@@ -60,7 +60,7 @@ export default function WaterfallChart({ base, adjustments, fair }: Props) {
 
       {/* Fair value row */}
       <div className="flex items-center gap-3 py-1.5 bg-blue-50 rounded-lg px-2">
-        <div className="w-44 shrink-0 text-sm font-semibold text-blue-700">Fair value estimate</div>
+        <div className="w-44 shrink-0 text-sm font-semibold text-blue-700">{t.sections.valuation.fair}</div>
         <div className="flex-1 text-xs text-blue-500">
           Net: {totalAdj >= 0 ? '+' : ''}{fmt(totalAdj)} ({totalAdj >= 0 ? '+' : ''}{totalPct}%)
         </div>

@@ -1,21 +1,15 @@
 import { useState, useEffect, useRef } from 'react'
 import type { AnalyzeRequest, UserAnswers } from '../types/analysis'
 import BuyerQuestionnaire from './BuyerQuestionnaire'
+import { useLanguage } from '../contexts/LanguageContext'
 
 interface Props {
   onSubmit: (req: AnalyzeRequest) => void
   loading: boolean
 }
 
-const PROFILES = [
-  { value: 'balanced',  label: 'Balanced' },
-  { value: 'family',    label: 'Family' },
-  { value: 'investor',  label: 'Investor' },
-  { value: 'retiree',   label: 'Retiree' },
-  { value: 'expat',     label: 'Expat / International' },
-] as const
-
 export default function AddressInput({ onSubmit, loading }: Props) {
+  const { t } = useLanguage()
   const [address, setAddress] = useState('')
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [showSugg, setShowSugg] = useState(false)
@@ -80,14 +74,14 @@ export default function AddressInput({ onSubmit, loading }: Props) {
   return (
     <form onSubmit={handleSubmit} className="card p-6 space-y-5">
       <div className="relative">
-        <label className={labelCls} style={{ color: 'var(--text-sub)' }}>Property address</label>
+        <label className={labelCls} style={{ color: 'var(--text-sub)' }}>{t.form.address}</label>
         <input
           type="text"
           value={address}
           onChange={e => { setAddress(e.target.value); setShowSugg(true) }}
           onBlur={() => setTimeout(() => setShowSugg(false), 150)}
           onFocus={() => suggestions.length > 0 && setShowSugg(true)}
-          placeholder="e.g. Carrer de Mallorca 401, Barcelona"
+          placeholder={t.form.addressPlaceholder}
           className={inputCls}
           style={{ borderColor: 'var(--border)', color: 'var(--text-main)' }}
           required
@@ -113,7 +107,7 @@ export default function AddressInput({ onSubmit, loading }: Props) {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div>
           <label className={labelCls} style={{ color: 'var(--text-sub)' }}>
-            Listing price (€) <span className="font-normal text-xs" style={{ color: 'var(--text-muted)' }}>optional</span>
+            {t.form.price} <span className="font-normal text-xs" style={{ color: 'var(--text-muted)' }}>{t.form.optional}</span>
           </label>
           <input
             type="number"
@@ -128,7 +122,7 @@ export default function AddressInput({ onSubmit, loading }: Props) {
 
         <div>
           <label className={labelCls} style={{ color: 'var(--text-sub)' }}>
-            Year built <span className="font-normal text-xs" style={{ color: 'var(--text-muted)' }}>optional</span>
+            {t.form.yearBuilt} <span className="font-normal text-xs" style={{ color: 'var(--text-muted)' }}>{t.form.optional}</span>
           </label>
           <input
             type="number"
@@ -144,7 +138,7 @@ export default function AddressInput({ onSubmit, loading }: Props) {
 
         <div>
           <label className={labelCls} style={{ color: 'var(--text-sub)' }}>
-            Floor <span className="font-normal text-xs" style={{ color: 'var(--text-muted)' }}>optional</span>
+            {t.form.floor} <span className="font-normal text-xs" style={{ color: 'var(--text-muted)' }}>{t.form.optional}</span>
           </label>
           <input
             type="number"
@@ -159,14 +153,14 @@ export default function AddressInput({ onSubmit, loading }: Props) {
         </div>
 
         <div>
-          <label className={labelCls} style={{ color: 'var(--text-sub)' }}>Buyer profile</label>
+          <label className={labelCls} style={{ color: 'var(--text-sub)' }}>{t.form.profile}</label>
           <select
             value={profile}
             onChange={e => setProfile(e.target.value as AnalyzeRequest['buyer_profile'])}
             className={inputCls}
             style={{ borderColor: 'var(--border)', color: 'var(--text-main)' }}
           >
-            {PROFILES.map(p => (
+            {t.form.profiles.map(p => (
               <option key={p.value} value={p.value}>{p.label}</option>
             ))}
           </select>
@@ -183,8 +177,8 @@ export default function AddressInput({ onSubmit, loading }: Props) {
         >
           <span className={`transition-transform text-xs ${showPropDetails ? 'rotate-90' : ''}`}>▶</span>
           <span>
-            Property details{' '}
-            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>— surface area, energy cert, condition</span>
+            {t.form.propDetails}{' '}
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{t.form.propDetailsSub}</span>
           </span>
         </button>
 
@@ -192,7 +186,7 @@ export default function AddressInput({ onSubmit, loading }: Props) {
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-stone-50 border rounded-xl p-4" style={{ borderColor: 'var(--border)' }}>
             <div>
               <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-sub)' }}>
-                Surface area (m²)
+                {t.form.surface}
               </label>
               <input
                 type="number"
@@ -206,7 +200,7 @@ export default function AddressInput({ onSubmit, loading }: Props) {
             </div>
             <div>
               <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-sub)' }}>
-                Energy certificate
+                {t.form.energyCert}
               </label>
               <select
                 value={energyCert}
@@ -214,7 +208,7 @@ export default function AddressInput({ onSubmit, loading }: Props) {
                 className="w-full px-3 py-2.5 bg-white border rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-300/50 focus:border-amber-300"
                 style={{ borderColor: 'var(--border)', color: 'var(--text-main)' }}
               >
-                <option value="">Unknown</option>
+                <option value="">{t.form.conditionUnknown}</option>
                 {['A','B','C','D','E','F','G'].map(c => (
                   <option key={c} value={c}>{c} {c === 'A' ? '(best)' : c === 'G' ? '(worst)' : ''}</option>
                 ))}
@@ -222,7 +216,7 @@ export default function AddressInput({ onSubmit, loading }: Props) {
             </div>
             <div>
               <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-sub)' }}>
-                Condition
+                {t.form.condition}
               </label>
               <select
                 value={condition}
@@ -230,10 +224,10 @@ export default function AddressInput({ onSubmit, loading }: Props) {
                 className="w-full px-3 py-2.5 bg-white border rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-300/50 focus:border-amber-300"
                 style={{ borderColor: 'var(--border)', color: 'var(--text-main)' }}
               >
-                <option value="">Unknown</option>
-                <option value="renovated">Fully renovated</option>
-                <option value="good">Good condition</option>
-                <option value="needs_work">Needs renovation</option>
+                <option value="">{t.form.conditionUnknown}</option>
+                <option value="renovated">{t.form.conditionRenovated}</option>
+                <option value="good">{t.form.conditionGood}</option>
+                <option value="needs_work">{t.form.conditionWork}</option>
               </select>
             </div>
           </div>
@@ -254,9 +248,9 @@ export default function AddressInput({ onSubmit, loading }: Props) {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
             </svg>
-            Analysing… (may take 30–60s)
+            {t.form.submitting}
           </span>
-        ) : 'Analyse this property →'}
+        ) : t.form.submit}
       </button>
     </form>
   )
