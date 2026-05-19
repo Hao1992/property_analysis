@@ -14,13 +14,16 @@ import NoiseEcosystem from '../components/NoiseEcosystem'
 import NeighbourhoodTrajectory from '../components/NeighbourhoodTrajectory'
 import DisclosureSection from '../components/DisclosureSection'
 import { useLanguage } from '../contexts/LanguageContext'
+import { useReportAnalytics } from '../hooks/useAnalytics'
 
 interface Props { data: AnalyzeResponse }
 
 export default function Report({ data }: Props) {
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
+  const { trackPdf } = useReportAnalytics(data.request_id, lang)
 
   const handlePrint = () => {
+    trackPdf()
     window.print()
   }
 
@@ -59,18 +62,22 @@ export default function Report({ data }: Props) {
         </div>
       </div>
 
-      {/* Disclosures — what to know before signing */}
-      <DisclosureSection items={data.disclosures ?? []} />
+      {/* Disclosures */}
+      <div data-section="disclosures">
+        <DisclosureSection items={data.disclosures ?? []} />
+      </div>
 
-      {/* AI Narrative — hero element */}
-      <NarrativeCard
-        narrative={data.narrative}
-        grade={data.score.grade}
-        composite={data.score.composite}
-      />
+      {/* AI Narrative */}
+      <div data-section="narrative">
+        <NarrativeCard
+          narrative={data.narrative}
+          grade={data.score.grade}
+          composite={data.score.composite}
+        />
+      </div>
 
       {/* Score + map row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5" data-section="score">
         <div className="lg:col-span-2">
           <ScoreCard score={data.score} />
         </div>
@@ -78,10 +85,12 @@ export default function Report({ data }: Props) {
       </div>
 
       {/* Property details */}
-      <PropertyDetails property={data.property} />
+      <div data-section="property">
+        <PropertyDetails property={data.property} />
+      </div>
 
       {/* Valuation + Hidden costs */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5" data-section="valuation">
         {data.valuation && (
           <ValuationModule
             valuation={data.valuation}
@@ -96,16 +105,18 @@ export default function Report({ data }: Props) {
       </div>
 
       {/* Negotiation */}
-      <NegotiationTips tips={data.negotiation_tips} />
+      <div data-section="negotiation">
+        <NegotiationTips tips={data.negotiation_tips} />
+      </div>
 
       {/* Safety + Airbnb */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5" data-section="safety">
         <SafetyModule safety={data.safety} />
         <AirbnbSaturation data={data.airbnb_saturation} />
       </div>
 
       {/* School + Noise */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5" data-section="school_noise">
         <SchoolQualityModule
           data={data.school_quality}
           schoolCategory={data.poi_categories.find(c => c.category === 'school')}
@@ -114,10 +125,14 @@ export default function Report({ data }: Props) {
       </div>
 
       {/* Neighbourhood trajectory */}
-      <NeighbourhoodTrajectory data={data.neighbourhood_trajectory} />
+      <div data-section="trajectory">
+        <NeighbourhoodTrajectory data={data.neighbourhood_trajectory} />
+      </div>
 
       {/* POIs */}
-      <NeighborhoodModule categories={data.poi_categories} lat={data.lat} lng={data.lng} />
+      <div data-section="pois">
+        <NeighborhoodModule categories={data.poi_categories} lat={data.lat} lng={data.lng} />
+      </div>
 
       <p className="text-xs text-center pb-4" style={{ color: 'var(--text-muted)' }}>
         {t.report.sources} {data.data_sources.join(' · ')}

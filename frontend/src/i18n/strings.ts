@@ -161,7 +161,7 @@ const strings = {
         addDetails: 'Adding property details (year built, surface) will improve accuracy.',
         adjustments: 'Score adjustments',
         penalties: {
-          overpriced: 'Listed above fair value estimate',
+          overpriced: 'Listed above market comparables estimate',
           critical_risk: 'Critical structural or safety risk detected',
           derrama_risk: 'High risk of upcoming major repair levy',
           tourist_saturation_penalty: 'High tourist apartment pressure',
@@ -551,7 +551,7 @@ const strings = {
         addDetails: '补充建造年份、面积等信息可提升评分准确度。',
         adjustments: '评分调整',
         penalties: {
-          overpriced: '挂牌价高于公允价值估算',
+          overpriced: '挂牌价高于市场可比房源估算',
           critical_risk: '发现严重结构或安全隐患',
           derrama_risk: '高额维修摊派风险较高',
           tourist_saturation_penalty: '旅游公寓比例过高',

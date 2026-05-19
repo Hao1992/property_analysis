@@ -1,8 +1,11 @@
 import asyncio
 import os
+import time
 import uuid
 
 from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import HTMLResponse
+from pydantic import BaseModel
 
 from models.request import AnalyzeRequest, CompareRequest
 from models.response import (
@@ -22,7 +25,7 @@ from scoring.hidden_costs import estimate_hidden_costs
 from scoring.transaction_costs import calculate_acquisition_costs, estimate_seller_economics
 from utils.cache import cached
 from utils.rate_limiter import check_rate_limit, get_client_ip
-from utils import analytics
+from utils import analytics, dashboard as dashboard_util
 
 router = APIRouter()
 
@@ -66,12 +69,14 @@ def _generate_negotiation_tips(val: dict, score: dict, prop: dict, language: str
     delta = val.get("vs_listing_pct") or 0
     zh = language == "zh"
 
+    # Note: delta is INE-based; only surface as a tip when comparables confirm the signal
+    # (comparables are the primary price signal — see market.py price_fairness)
     if delta > 10:
         tips.append(
-            f"挂牌价高于公允价值估算 {delta:.0f}%，建议从公允价值（€{val['fair_value']:,.0f}）开始议价。"
+            f"INE数据显示挂牌价偏高约 {delta:.0f}%，建议结合Fotocasa可比房源数据综合判断议价空间。"
             if zh else
-            f"Property is listed {delta:.0f}% above estimated fair value. "
-            f"Open negotiations at fair value (€{val['fair_value']:,.0f})."
+            f"Registry data suggests the asking price may be {delta:.0f}% above area norms. "
+            "Cross-reference with the Fotocasa comparables above before making an offer."
         )
 
     cert = (prop.get("energy_cert") or "").strip().upper()
@@ -288,12 +293,14 @@ async def analyze(req: AnalyzeRequest, request: Request):
         )
 
     user_answers_json = req.user_answers.model_dump_json() if req.user_answers else None
+    _t0 = time.time()
     data = await _run_full_analysis(
         req.address, req.listing_price, req.buyer_profile,
         user_answers_json, req.year_built, req.floor,
         req.surface_m2, req.energy_cert, req.condition,
         language=req.language,
     )
+    duration_ms = round((time.time() - _t0) * 1000)
 
     lat, lng      = data["lat"], data["lng"]
     prop_data     = data["property"]
@@ -330,6 +337,8 @@ async def analyze(req: AnalyzeRequest, request: Request):
     )
 
     request_id = str(uuid.uuid4())
+    _score_dims = {d["name"]: d.get("score") for d in score_data.get("dimensions", [])}
+    _user_ans   = req.user_answers.model_dump(exclude_none=True) if req.user_answers else {}
     analytics.log_analysis(
         ip=ip,
         address=geo["display_name"],
@@ -339,6 +348,11 @@ async def analyze(req: AnalyzeRequest, request: Request):
         district=data.get("district", ""),
         listing_price=req.listing_price,
         buyer_profile=req.buyer_profile,
+        language=req.language,
+        duration_ms=duration_ms,
+        fotocasa_success=bool(comparables_data and comparables_data.get("source") == "Fotocasa"),
+        user_answers=_user_ans,
+        score_dimensions=_score_dims,
     )
 
     return AnalyzeResponse(
@@ -505,20 +519,36 @@ async def compare(req: CompareRequest):
     )
 
 
-@router.get("/admin/analytics")
-async def get_analytics(token: str = ""):
+@router.get("/admin/analytics", response_class=HTMLResponse)
+async def get_analytics_dashboard(token: str = ""):
     expected = os.getenv("ANALYTICS_TOKEN", "")
     if not expected or token != expected:
         raise HTTPException(status_code=403, detail="Forbidden")
-    return {
-        "summary": analytics.get_summary(),
-        "entries": analytics.get_all(),
-    }
+    stats = analytics.get_stats()
+    return HTMLResponse(content=dashboard_util.render(stats, token=token))
 
 
-@router.get("/admin/usage")
-async def get_usage_summary(token: str = ""):
+@router.get("/admin/analytics/json")
+async def get_analytics_json(token: str = ""):
     expected = os.getenv("ANALYTICS_TOKEN", "")
     if not expected or token != expected:
         raise HTTPException(status_code=403, detail="Forbidden")
-    return analytics.get_summary()
+    return {"summary": analytics.get_summary(), "entries": analytics.get_all()}
+
+
+class TrackEvent(BaseModel):
+    session_id: str
+    request_id: str
+    event: str
+    data: dict = {}
+
+
+@router.post("/track")
+async def track_event(body: TrackEvent):
+    analytics.log_track_event(
+        session_id=body.session_id,
+        request_id=body.request_id,
+        event=body.event,
+        data=body.data,
+    )
+    return {"ok": True}
