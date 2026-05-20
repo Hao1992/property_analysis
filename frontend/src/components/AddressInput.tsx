@@ -128,6 +128,12 @@ export default function AddressInput({ onSubmit, loading }: Props) {
           required
           autoComplete="off"
         />
+        {/* Format hint — shown when user starts typing but no suggestions yet */}
+        {address.length > 2 && address.length < 10 && suggestions.length === 0 && (
+          <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+            {t.form.addressHint}
+          </p>
+        )}
         {showSugg && suggestions.length > 0 && (
           <ul className="absolute z-50 w-full mt-1 bg-white border rounded-xl shadow-xl overflow-hidden" style={{ borderColor: 'var(--border)' }}>
             {suggestions.map((s, i) => (

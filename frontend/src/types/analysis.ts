@@ -79,9 +79,9 @@ export interface ValuationData {
 }
 
 export interface AirbnbSaturationData {
-  tourist_pct_building?: number;
-  tourist_count_500m: number;
-  tourist_count_100m: number;
+  tourist_pct_building?: number | null;
+  tourist_count_500m: number | null;
+  tourist_count_100m: number | null;
   risk_label: 'low' | 'medium' | 'high' | 'very_high';
   data_source: string;
 }
@@ -112,6 +112,7 @@ export interface NoiseData {
   nightclubs_500m: number;
   floor_boost_applied: number;
   construction_risk: string;
+  night_data_note?: string;
 }
 
 export interface HiddenCostsData {

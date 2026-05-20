@@ -5,6 +5,7 @@ import { useLanguage } from './contexts/LanguageContext'
 import AddressInput from './components/AddressInput'
 import Report from './pages/Report'
 import Compare from './pages/Compare'
+import CostCalculator from './components/CostCalculator'
 
 type Tab = 'analyze' | 'compare'
 
@@ -163,6 +164,13 @@ export default function App() {
             <p className="text-center text-xs mt-6" style={{ color: 'var(--text-muted)' }}>
               {t.hero.limit}
             </p>
+
+            {/* Cost calculator — standalone, always visible on home */}
+            {!result && !loading && (
+              <div className="mt-8">
+                <CostCalculator />
+              </div>
+            )}
           </div>
         )}
 

@@ -25,6 +25,7 @@ def generate_disclosures(
     items: list[dict] = []
 
     items += _transaction_costs(listing_price, prop_data)
+    items += _catastro_tax_trap(prop_data, listing_price)
     items += _airbnb_situation(airbnb_data)
     items += _building_era(prop_data)
     items += _community_debt(hidden_costs_data, prop_data)
@@ -65,16 +66,35 @@ def _translate_zh(
     night = noise_data.get("night_noise_score", 100)
 
     cadastral = prop_data.get("cadastral_value")
-    price = listing_price or (cadastral / 0.5 if cadastral else None)
+    price = listing_price or (cadastral / 0.35 if cadastral else None)
     itp = int(price * 0.10) if price else None
     notary = int(price * 0.015) if price else None
     lawyer = int(price * 0.01) if price else None
     total_low = itp + notary if (itp and notary) else None
     total_high = total_low + lawyer if (total_low and lawyer) else None
 
-    annual_irnr = round(cadastral * 0.011) if cadastral else None
+    # IRNR: imputed income = cadastral × 1.1%; tax = imputed income × 19% (EU residents) ≈ 0.2% cadastral
+    annual_irnr = round(cadastral * 0.011 * 0.19) if cadastral else None
+
+    cadastral_value = prop_data.get("cadastral_value")
+    ref_estimate = int(cadastral_value / 0.35) if cadastral_value else None
+    catastro_gap = int(ref_estimate - listing_price) if (ref_estimate and listing_price and ref_estimate > listing_price) else None
+    catastro_extra_tax = int(catastro_gap * 0.10) if catastro_gap else None
 
     zh_map: dict[str, dict] = {
+        "catastro_tax_trap": {
+            "title": "Catastro参考价可能高于成交价，税务局按高者征收ITP",
+            "detail": (
+                f"该房产的Catastro参考价估算约为 €{ref_estimate:,}（估算值，巴塞罗那老楼地籍估值通常为市场价的25–40%），"
+                + (f"高于挂牌价 €{int(listing_price):,} 约 €{catastro_gap:,}。" if catastro_gap and listing_price else "")
+                + "西班牙税务局有权按实际成交价与官方Catastro参考价中的较高者征收ITP（加泰罗尼亚税率10%）。"
+                + (f"若按参考价计算，你可能需要额外缴纳约 €{catastro_extra_tax:,} 的税款。" if catastro_extra_tax else "")
+            ),
+            "action": (
+                "签约前请在Catastro官网（sede.catastro.gob.es）查询精确的valor de referencia。"
+                "若高于成交价，建议咨询税务律师，评估是否提出异议或将额外税款纳入预算。"
+            ),
+        },
         "transaction_costs": {
             "title": (
                 f"购房税费约 €{total_low:,}–€{total_high:,}，需额外准备"
@@ -114,15 +134,17 @@ def _translate_zh(
         },
         "building_era_risk": (
             {
-                "title": f"建于 {year} 年：铝水泥（aluminosis）高风险建筑",
+                "title": f"建于 {year} 年：铝水泥高风险 + 社区大修费可能达 €15,000–€40,000/户",
                 "detail": (
-                    "1960–1975年间建造的巴塞罗那建筑大量使用铝水泥，"
-                    "这种材料会随时间降解并削弱结构构件，外观无法判断。"
-                    "巴塞罗那已有多栋此类建筑被拆除或进行了高成本修缮。"
+                    "1960–1975年间的巴塞罗那建筑大量使用铝水泥（aluminosis），"
+                    "该材料随时间降解并削弱结构柱和楼板，外观无法判断。"
+                    "修缮时社区议定的大修摊派（derrama）实际案例中每户费用从 €15,000 到 €40,000 不等。"
+                    "卖方无主动披露义务。"
                 ),
                 "action": (
-                    "签约前务必委托独立结构工程师出具检测报告（ITE或技术报告），"
-                    "不要依赖卖方提供的检测。"
+                    "签约前：（1）委托独立结构工程师出具ITE报告，不依赖卖方检测；"
+                    "（2）索取近3年业主大会记录（actas de junta）——已知结构问题必须在此记录；"
+                    "（3）询问是否已有正在讨论或议定的结构修缮摊派计划。"
                 ),
             }
             if year and 1960 <= year <= 1975
@@ -201,7 +223,7 @@ def _translate_zh(
             "detail": (
                 (
                     f"根据地籍估值（€{int(cadastral):,}），预计IRNR = "
-                    f"€{annual_irnr:,}/年（地籍估值 × 1.1%）。"
+                    f"€{annual_irnr:,}/年（地籍估值 × 1.1% 推算收入 × 19% 欧盟税率，实际税率约为地籍估值的0.2%）。"
                 )
                 if annual_irnr
                 else ""
@@ -287,7 +309,7 @@ def _translate_zh(
 
 def _transaction_costs(listing_price: float | None, prop_data: dict) -> list[dict]:
     cadastral = prop_data.get("cadastral_value")
-    price = listing_price or (cadastral / 0.5 if cadastral else None)
+    price = listing_price or (cadastral / 0.35 if cadastral else None)
     if not price:
         return [{
             "id": "transaction_costs",
@@ -374,16 +396,21 @@ def _building_era(prop_data: dict) -> list[dict]:
             "id": "building_era_risk",
             "severity": "red",
             "category": "building",
-            "title": f"Built {year}: high-risk era for aluminosis",
+            "title": f"Built {year}: aluminosis + potential community repair cost €15,000–€40,000/unit",
             "detail": (
-                "Barcelona buildings from 1960–1975 were frequently constructed with aluminium "
-                "cement (aluminosis), which degrades over time and weakens structural elements. "
-                "This cannot be detected by appearance alone — several Barcelona buildings with "
-                "this problem were demolished or required costly rehabilitation."
+                "Barcelona buildings from 1960–1975 were frequently built with aluminium cement (aluminosis), "
+                "which degrades over time and weakens structural columns and slabs. "
+                "This cannot be detected visually — several buildings in this era required major rehabilitation "
+                "or demolition. When remediation is required, community-agreed structural repair costs "
+                "have ranged from €15,000 to €40,000 per unit (real cases documented in Galicia and BCN). "
+                "The seller is not required to disclose this proactively."
             ),
             "action": (
-                "Commission an independent structural engineer's report (ITE or informe tècnic) "
-                "before signing. Do not rely on the seller's inspection."
+                "Before signing: (1) Commission an independent structural engineer's ITE report — "
+                "do not rely on the seller's inspection. "
+                "(2) Request the last 3 years of community meeting minutes (actas de junta) — "
+                "any known structural issues must be discussed there. "
+                "(3) Ask if a derrama for structural works has been agreed or is under discussion."
             ),
         }]
     elif year < 1960:
@@ -452,9 +479,11 @@ def _community_debt(hidden_costs_data: dict, prop_data: dict) -> list[dict]:
             f"{derrama_detail}"
         ),
         "action": (
-            "Before signing: request the certificado de deudas de la comunidad "
-            "(community debt certificate) from the building administrator, AND the "
-            "last IBI receipt proving it was paid."
+            "Before signing: (1) Request the certificado de deudas de la comunidad "
+            "(community debt certificate) from the building administrator. "
+            "(2) Request the last IBI receipt proving it was paid. "
+            "(3) Request the last 2 years of community meeting minutes (actas de junta) "
+            "— approved derrama levies must be disclosed there."
         ),
     }]
 
@@ -514,14 +543,17 @@ def _nonresident_tax(
             "title": "Non-resident owners pay annual income tax even with no rental income",
             "detail": (
                 "If you are not a Spanish tax resident, you must file and pay IRNR "
-                "(Impuesto sobre la Renta de No Residentes) annually — typically 1.1% "
-                "of the cadastral value, even if the property sits empty. "
+                "(Impuesto sobre la Renta de No Residentes) annually — approximately 0.2% "
+                "of the cadastral value for EU residents (1.1% imputed income × 19% tax rate), "
+                "even if the property sits empty. "
                 "This is separate from IBI and is frequently overlooked by foreign buyers."
             ),
             "action": "Consult a Spanish gestor or tax advisor before purchase to understand your annual tax obligation.",
         }]
 
-    annual_irnr = round(cadastral * 0.011)
+    # IRNR formula: imputed income = cadastral × 1.1%; tax = imputed income × 19% (EU residents)
+    # Effective rate ≈ 0.209% of cadastral value
+    annual_irnr = round(cadastral * 0.011 * 0.19)
     return [{
         "id": "nonresident_tax",
         "severity": "yellow",
@@ -529,7 +561,7 @@ def _nonresident_tax(
         "title": f"Non-resident tax: ~€{annual_irnr:,}/year even if property sits empty",
         "detail": (
             f"Based on cadastral value (€{int(cadastral):,}), estimated IRNR = "
-            f"€{annual_irnr:,}/year (1.1% × cadastral value). "
+            f"€{annual_irnr:,}/year (cadastral value × 1.1% imputed income × 19% EU tax rate ≈ 0.2% of cadastral). "
             "This applies to all non-Spanish tax residents and is due regardless of "
             "whether you rent the property or leave it vacant. "
             "Plus IBI on top."
@@ -607,6 +639,40 @@ def _neighbourhood_trajectory(trajectory_data: dict) -> list[dict]:
             "action": None,
         }]
     return []
+
+
+def _catastro_tax_trap(prop_data: dict, listing_price: float | None) -> list[dict]:
+    """Warn when Catastro value could be higher than listing price — buyer pays ITP on the higher value."""
+    cadastral_value = prop_data.get("cadastral_value")
+    if not cadastral_value or not listing_price:
+        return []
+    # For BCN old stock, valor catastral is typically 25-40% of market value.
+    # Using 0.35 as a central estimate gives better coverage than 0.5.
+    # Verify the exact valor de referencia at sede.catastro.gob.es before signing.
+    reference_estimate = cadastral_value / 0.35
+    if listing_price >= reference_estimate * 0.95:
+        return []  # listing price is at or above reference — no trap likely
+    gap = reference_estimate - listing_price
+    extra_tax = round(gap * 0.10)
+    return [{
+        "id": "catastro_tax_trap",
+        "severity": "yellow",
+        "category": "costs",
+        "title": f"ITP tax may be calculated on Catastro reference value, not purchase price",
+        "detail": (
+            f"The Catastro valor de referencia for this property is estimated at ~€{int(reference_estimate):,} "
+            "(approximation — BCN old stock cadastral values are typically 25–40% of market value). "
+            f"This is {round((reference_estimate - listing_price) / listing_price * 100)}% above the asking price of €{int(listing_price):,}. "
+            "In Spain, Hacienda can charge ITP (10% in Catalonia) on the higher of: "
+            "your actual purchase price OR the official Catastro reference value. "
+            f"If that applies here, you could owe an extra ~€{extra_tax:,} in tax beyond what you budgeted."
+        ),
+        "action": (
+            "Before signing, check the exact valor de referencia at the Catastro website "
+            "(sede.catastro.gob.es). If it exceeds your purchase price, get a tax lawyer's opinion "
+            "on whether to challenge it or factor the extra ITP into your budget."
+        ),
+    }]
 
 
 def _cedula_habitabilidad(prop_data: dict) -> list[dict]:

@@ -37,6 +37,8 @@ router = APIRouter()
 def _format_poi_categories(enriched: dict) -> list[PoiCategory]:
     result = []
     for cat, items in enriched.items():
+        if not isinstance(items, list):
+            continue
         # Transit: show more stops for map rendering; school: show top 5; others: top 3
         n = 8 if cat in ("bus_stop", "metro") else 5 if cat == "school" else 3
         top_n = items[:n]
@@ -295,7 +297,7 @@ async def _run_full_analysis(
 
     narrative_data = ai_narrative.generate_narrative(analysis_flat, buyer_profile, language=language)
 
-    return {
+    result = {
         **analysis_flat,
         "geo":              geo,
         "district":         district,
@@ -305,6 +307,9 @@ async def _run_full_analysis(
         "listing_price":     listing_price,
         "comparables":       comparables_data,
     }
+    if poi_raw.get("_unavailable"):
+        result["_degraded"] = True
+    return result
 
 
 # ─── endpoints ──────────────────────────────────────────────────────────────
@@ -366,7 +371,7 @@ async def analyze(req: AnalyzeRequest, request: Request):
 
     enriched_count = sum(
         min(3, len(pois)) for pois in data["enriched_poi"].values()
-        if any(p.get("google_rating") is not None for p in pois[:3])
+        if isinstance(pois, list) and any(p.get("google_rating") is not None for p in pois[:3])
     )
 
     request_id = str(uuid.uuid4())

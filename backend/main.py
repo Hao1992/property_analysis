@@ -8,6 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from api.routes.health import router as health_router
 from api.routes.analyze import router as analyze_router
 from api.routes.transit import router as transit_router
+from api.routes.cost_calculator import router as cost_calculator_router
+from api.routes.commute import router as commute_router
 
 app = FastAPI(
     title="Property Analyzer API",
@@ -33,6 +35,8 @@ app.add_middleware(
 app.include_router(health_router)
 app.include_router(analyze_router)
 app.include_router(transit_router)
+app.include_router(cost_calculator_router)
+app.include_router(commute_router)
 
 
 if __name__ == "__main__":

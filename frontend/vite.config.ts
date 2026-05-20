@@ -6,9 +6,11 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/analyze': 'http://localhost:8000',
-      '/compare': 'http://localhost:8000',
-      '/health':  'http://localhost:8000',
+      '/analyze':         'http://localhost:8000',
+      '/compare':         'http://localhost:8000',
+      '/health':          'http://localhost:8000',
+      '/cost-calculator': 'http://localhost:8000',
+      '/commute':         'http://localhost:8000',
     }
   }
 })

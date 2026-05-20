@@ -1,8 +1,16 @@
+import asyncio
 import httpx
+import logging
 import math
 import os
 
-OVERPASS_URL = os.getenv("OVERPASS_URL", "https://overpass-api.de/api/interpreter")
+logger = logging.getLogger(__name__)
+
+_OVERPASS_ENDPOINTS = [
+    os.getenv("OVERPASS_URL", "https://overpass-api.de/api/interpreter"),
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass.openstreetmap.ru/api/interpreter",
+]
 
 # Barcelona metro (TMB) and FGC station → line mapping.
 # OSM route_ref tags are often absent for FGC/Tramvia stations; this fills the gap.
@@ -64,6 +72,16 @@ CATEGORY_MAP = {
     "marketplace":    {"amenity": ["marketplace"]},
 }
 
+# Road classes used for day noise estimation.
+# OSM highway values ordered by traffic noise intensity.
+ROAD_NOISE_WEIGHTS = {
+    "motorway":     90,
+    "trunk":        75,
+    "primary":      55,
+    "secondary":    35,
+    "tertiary":     15,
+}
+
 # Used only for the amenity_density sub-score in Convenience.
 # School is scored separately in Liveability; parking removed (not a convenience amenity).
 CATEGORY_WEIGHTS = {
@@ -92,18 +110,30 @@ async def fetch_pois(lat: float, lng: float, radius_m: int = 500) -> dict:
 out center tags;
 """
     _HEADERS = {"User-Agent": "PropertyAnalyzer/2.0 (contact: dev@propertyanalyzer.es)"}
-    try:
-        async with httpx.AsyncClient(timeout=35, headers=_HEADERS) as client:
-            r = await client.post(OVERPASS_URL, data={"data": query})
-            r.raise_for_status()
-            elements = r.json().get("elements", [])
-    except Exception:
-        elements = []
+    elements = []
+    for endpoint in _OVERPASS_ENDPOINTS:
+        try:
+            async with httpx.AsyncClient(timeout=35, headers=_HEADERS) as client:
+                r = await client.post(endpoint, data={"data": query})
+                r.raise_for_status()
+                elements = r.json().get("elements", [])
+                break
+        except Exception as exc:
+            logger.warning("Overpass endpoint %s failed: %s", endpoint, exc)
+    else:
+        logger.error("All Overpass endpoints failed — POI data will be empty")
+        result: dict[str, list] = {cat: [] for cat in CATEGORY_MAP}
+        result["_unavailable"] = True  # type: ignore[assignment]
+        return result
 
-    # Also fetch transit route numbers for bus stops in the area
-    transit_routes = await _fetch_transit_routes(lat, lng, radius_m)
+    # Fetch transit routes and road data in parallel
+    transit_routes, road_noise = await asyncio.gather(
+        _fetch_transit_routes(lat, lng, radius_m),
+        _fetch_road_noise(lat, lng, radius_m),
+    )
 
     result: dict[str, list] = {cat: [] for cat in CATEGORY_MAP}
+    result["_road_noise_score"] = road_noise  # type: ignore[assignment]
     seen = set()  # deduplicate by name+distance
 
     for el in elements:
@@ -152,7 +182,7 @@ out center tags;
             "tags": tags,   # kept for school_quality.py OSM tag inspection
         })
 
-    for cat in result:
+    for cat in CATEGORY_MAP:
         result[cat].sort(key=lambda x: x["distance_m"])
 
     # Deduplicate transit stops:
@@ -215,13 +245,16 @@ relation["type"="route"]["route"~"^(bus|subway|tram|light_rail)$"](around:{radiu
 out tags;
 """
     _HEADERS = {"User-Agent": "PropertyAnalyzer/2.0 (contact: dev@propertyanalyzer.es)"}
-    try:
-        async with httpx.AsyncClient(timeout=25, headers=_HEADERS) as client:
-            r = await client.post(OVERPASS_URL, data={"data": query})
-            r.raise_for_status()
-            relations = r.json().get("elements", [])
-    except Exception:
-        return {}
+    relations = []
+    for endpoint in _OVERPASS_ENDPOINTS:
+        try:
+            async with httpx.AsyncClient(timeout=25, headers=_HEADERS) as client:
+                r = await client.post(endpoint, data={"data": query})
+                r.raise_for_status()
+                relations = r.json().get("elements", [])
+                break
+        except Exception as exc:
+            logger.warning("Overpass transit endpoint %s failed: %s", endpoint, exc)
 
     routes: dict[str, list[str]] = {}
     for rel in relations:
@@ -230,6 +263,58 @@ out tags;
         if ref:
             routes[ref] = []
     return routes
+
+
+async def _fetch_road_noise(lat: float, lng: float, radius_m: int) -> int:
+    """Return a 0-100 day-noise score based on OSM road classification within radius_m.
+
+    Queries way elements tagged as major roads (motorway → tertiary).
+    Score: 100 = no significant roads nearby; lower = heavier traffic noise expected.
+    Returns 50 (neutral) on API failure so missing data doesn't distort the score.
+    """
+    road_types = list(ROAD_NOISE_WEIGHTS.keys())
+    filters = "\n".join(
+        f'way["highway"="{rt}"](around:{radius_m},{lat},{lng});'
+        for rt in road_types
+    )
+    query = f"""
+[out:json][timeout:15];
+({filters});
+out center tags;
+"""
+    _HEADERS = {"User-Agent": "PropertyAnalyzer/2.0 (contact: dev@propertyanalyzer.es)"}
+    ways = []
+    for endpoint in _OVERPASS_ENDPOINTS:
+        try:
+            async with httpx.AsyncClient(timeout=20, headers=_HEADERS) as client:
+                r = await client.post(endpoint, data={"data": query})
+                r.raise_for_status()
+                ways = r.json().get("elements", [])
+                break
+        except Exception as exc:
+            logger.warning("Overpass road-noise endpoint %s failed: %s", endpoint, exc)
+    else:
+        return 50  # neutral on total failure
+
+    if not ways:
+        return 95  # no major roads nearby → very quiet
+
+    # Distance-weighted penalty: closest road has most impact
+    total_penalty = 0.0
+    for way in ways:
+        center = way.get("center", {})
+        el_lat = center.get("lat") or lat
+        el_lng = center.get("lon") or lng
+        dist = haversine(lat, lng, el_lat, el_lng)
+        hw = way.get("tags", {}).get("highway", "tertiary")
+        weight = ROAD_NOISE_WEIGHTS.get(hw, 15)
+        # Linear distance decay: full impact at 0m, zero at radius_m
+        decay = max(0.0, 1.0 - dist / radius_m)
+        total_penalty += weight * decay
+
+    # Allow score down to 10 for motorway proximity; don't artificially cap at 20
+    score = round(max(10.0, 100.0 - min(total_penalty, 90.0)))
+    return score
 
 
 def haversine(lat1: float, lng1: float, lat2: float, lng2: float) -> float:

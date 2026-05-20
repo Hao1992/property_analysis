@@ -86,8 +86,12 @@ async def enrich_with_ratings(poi_dict: dict) -> dict:
     Drop-in replacement for the former Google Places implementation.
     Downstream scoring code (school_quality.py) is unchanged.
     """
-    return {
-        category: [
+    result = {}
+    for category, pois in poi_dict.items():
+        if not isinstance(pois, list):
+            result[category] = pois  # preserve non-list metadata entries as-is
+            continue
+        result[category] = [
             {
                 **poi,
                 "google_rating": _baseline_rating(poi, category),
@@ -96,5 +100,4 @@ async def enrich_with_ratings(poi_dict: dict) -> dict:
             }
             for poi in pois
         ]
-        for category, pois in poi_dict.items()
-    }
+    return result

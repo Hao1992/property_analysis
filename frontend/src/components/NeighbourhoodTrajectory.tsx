@@ -1,5 +1,6 @@
 import { NeighbourhoodTrajectoryData } from '../types/analysis';
 import SourceBadge from './SourceBadge';
+import ConfidenceBadge from './ConfidenceBadge';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface Props { data: NeighbourhoodTrajectoryData; }
@@ -18,9 +19,12 @@ export default function NeighbourhoodTrajectory({ data }: Props) {
 
   return (
     <div className="card p-5 space-y-4">
-      <div>
-        <p className="text-xs font-medium uppercase tracking-widest mb-1" style={{ color: 'var(--accent)' }}>{traj.label}</p>
-        <h3 className="font-semibold" style={{ color: 'var(--text-main)' }}>{traj.title}</h3>
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-widest mb-1" style={{ color: 'var(--accent)' }}>{traj.label}</p>
+          <h3 className="font-semibold" style={{ color: 'var(--text-main)' }}>{traj.title}</h3>
+        </div>
+        <ConfidenceBadge level="verified" />
       </div>
 
       <div className={`flex items-center gap-3 rounded-xl px-4 py-3 border ${trendStyle.bg}`}>

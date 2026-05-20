@@ -1,5 +1,6 @@
 import type { SafetyData } from '../types/analysis'
 import SourceBadge from './SourceBadge'
+import ConfidenceBadge from './ConfidenceBadge'
 import { useLanguage } from '../contexts/LanguageContext'
 
 interface Props { safety: SafetyData }
@@ -27,7 +28,10 @@ export default function SafetyModule({ safety }: Props) {
           <p className="text-xs font-medium uppercase tracking-widest mb-1" style={{ color: 'var(--accent)' }}>{t.sections.safety.label}</p>
           <h3 className="font-semibold" style={{ color: 'var(--text-main)' }}>{t.sections.safety.title} — {safety.district}</h3>
         </div>
-        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{safety.data_year} {t.sections.safety.year}</span>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{safety.data_year} {t.sections.safety.year}</span>
+          <ConfidenceBadge level="district" />
+        </div>
       </div>
 
       <div className="space-y-4">
@@ -52,10 +56,12 @@ export default function SafetyModule({ safety }: Props) {
         })}
       </div>
 
-      <div className="space-y-1">
-        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t.sections.safety.note}</p>
-        <SourceBadge sources={[{ label: 'Open Data Barcelona — Seguretat Ciutadana', url: 'https://opendata-ajuntament.barcelona.cat/data/ca/dataset/estadistica-de-seguretat-ciutadana', note: `${safety.data_year} data` }]} />
+      {/* District-level data warning — prominently shown per Reddit feedback */}
+      <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800">
+        {t.sections.safety.districtWarning}
       </div>
+
+      <SourceBadge sources={[{ label: 'Open Data Barcelona — Seguretat Ciutadana', url: 'https://opendata-ajuntament.barcelona.cat/data/ca/dataset/estadistica-de-seguretat-ciutadana', note: `${safety.data_year} data` }]} />
     </div>
   )
 }

@@ -63,8 +63,8 @@ class ValuationData(BaseModel):
 
 class AirbnbSaturationData(BaseModel):
     tourist_pct_building: Optional[float] = None
-    tourist_count_500m: int = 0
-    tourist_count_100m: int = 0
+    tourist_count_500m: Optional[int] = None
+    tourist_count_100m: Optional[int] = None
     risk_label: str                            # low | medium | high | very_high
     data_source: str = "Inside Airbnb"
 

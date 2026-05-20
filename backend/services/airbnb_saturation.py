@@ -90,11 +90,14 @@ async def get_airbnb_saturation(lat: float, lng: float, district: str = "Eixampl
     listings = await _ensure_listings()
 
     if not listings:
-        fallback = _DISTRICT_FALLBACK.get(district, {"risk": "medium", "count_500m": 40})
+        # InsideAirbnb CSV unavailable. Use district-level risk label only.
+        # We intentionally do NOT show specific counts (100m / 500m) because the
+        # district-level numbers are averages and would be misleading for a specific address.
+        fallback = _DISTRICT_FALLBACK.get(district, {"risk": "medium"})
         return {
             "tourist_pct_building": None,
-            "tourist_count_500m": fallback["count_500m"],
-            "tourist_count_100m": max(1, fallback["count_500m"] // 8),
+            "tourist_count_500m": None,   # not available — district fallback only
+            "tourist_count_100m": None,   # not available — district fallback only
             "risk_label": fallback["risk"],
             "data_source": "district-heuristic",
         }

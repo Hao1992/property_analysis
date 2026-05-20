@@ -14,6 +14,7 @@ import SchoolQualityModule from '../components/SchoolQualityModule'
 import NoiseEcosystem from '../components/NoiseEcosystem'
 import NeighbourhoodTrajectory from '../components/NeighbourhoodTrajectory'
 import DisclosureSection from '../components/DisclosureSection'
+import CommuteAnalysis from '../components/CommuteAnalysis'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useReportAnalytics } from '../hooks/useAnalytics'
 
@@ -50,8 +51,17 @@ export default function Report({ data }: Props) {
           </button>
         </div>
 
+        {/* Always show geocoded coordinates so user can verify the right location was found */}
+        <div className="mt-2 text-xs px-3 py-2 bg-stone-50 border rounded-lg" style={{ borderColor: 'var(--border)' }}>
+          <span style={{ color: 'var(--text-muted)' }}>{t.report.geocodedAs} </span>
+          <span className="font-medium" style={{ color: 'var(--text-sub)' }}>{data.address}</span>
+          <span className="ml-2" style={{ color: 'var(--text-muted)' }}>
+            ({data.lat.toFixed(4)}, {data.lng.toFixed(4)})
+          </span>
+        </div>
+
         {data.geocode_warning && (
-          <div className="mt-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          <div className="mt-2 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
             <span className="text-amber-500 text-sm shrink-0">⚠</span>
             <p className="text-xs text-amber-700 leading-relaxed">
               <span className="font-semibold">{t.report.addressMismatch} </span>{data.geocode_warning}
@@ -123,13 +133,18 @@ export default function Report({ data }: Props) {
         <AirbnbSaturation data={data.airbnb_saturation} />
       </div>
 
-      {/* School + Noise */}
+      {/* School + Noise — 2-col grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5" data-section="school_noise">
         <SchoolQualityModule
           data={data.school_quality}
           schoolCategory={data.poi_categories.find(c => c.category === 'school')}
         />
         <NoiseEcosystem data={data.noise} />
+      </div>
+
+      {/* Commute — full width */}
+      <div data-section="commute">
+        <CommuteAnalysis homeLat={data.lat} homeLng={data.lng} />
       </div>
 
       {/* Neighbourhood trajectory */}

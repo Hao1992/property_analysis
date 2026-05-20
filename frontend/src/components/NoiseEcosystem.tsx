@@ -1,5 +1,6 @@
 import { NoiseData } from '../types/analysis';
 import SourceBadge from './SourceBadge';
+import ConfidenceBadge from './ConfidenceBadge';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface Props { data: NoiseData; }
@@ -27,10 +28,13 @@ export default function NoiseEcosystem({ data }: Props) {
 
   return (
     <div className="card p-5 space-y-4">
-      <div>
-        <p className="text-xs font-medium uppercase tracking-widest mb-1" style={{ color: 'var(--accent)' }}>{noise.label}</p>
-        <h3 className="font-semibold" style={{ color: 'var(--text-main)' }}>{noise.title}</h3>
-        <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{noise.scale}</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-widest mb-1" style={{ color: 'var(--accent)' }}>{noise.label}</p>
+          <h3 className="font-semibold" style={{ color: 'var(--text-main)' }}>{noise.title}</h3>
+          <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{noise.scale}</p>
+        </div>
+        <ConfidenceBadge level="estimated" />
       </div>
 
       {data.floor_boost_applied > 0 && (
@@ -56,10 +60,14 @@ export default function NoiseEcosystem({ data }: Props) {
         <Bar label={noise.bars.weekend} score={data.weekend_noise_score} />
       </div>
 
-      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-        {(noise.construction as Record<string, string>)[data.construction_risk] ?? ''}
-        {' · '}{noise.note}
-      </p>
+      {/* Construction risk as a building attribute, not a noise score */}
+      {data.construction_risk !== 'low' && (
+        <div className="text-xs px-3 py-2 rounded-lg bg-stone-50 border border-stone-200" style={{ color: 'var(--text-muted)' }}>
+          {(noise.construction as Record<string, string>)[data.construction_risk] ?? ''}
+        </div>
+      )}
+
+      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{noise.note}</p>
       <SourceBadge sources={[{ label: 'OpenStreetMap via Overpass API', url: 'https://overpass-turbo.eu/', note: 'bars, clubs, nightlife POIs' }]} />
     </div>
   );

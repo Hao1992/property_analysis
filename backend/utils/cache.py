@@ -21,13 +21,14 @@ async def get_redis():
     return _redis
 
 
-def cached(ttl: int = CACHE_TTL):
+def cached(ttl: int = CACHE_TTL, degraded_ttl: int = 300):
+    """Cache decorator. When the result dict contains `_degraded: True`,
+    uses degraded_ttl (default 5 min) instead of ttl to avoid locking in bad data."""
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):
             r = await get_redis()
             if r is None:
-                # No Redis — run without cache
                 return await func(*args, **kwargs)
 
             cache_input = str(args) + str(sorted(kwargs.items()))
@@ -42,8 +43,9 @@ def cached(ttl: int = CACHE_TTL):
 
             result = await func(*args, **kwargs)
 
+            actual_ttl = degraded_ttl if (isinstance(result, dict) and result.get("_degraded")) else ttl
             try:
-                await r.setex(key, ttl, json.dumps(result, default=str))
+                await r.setex(key, actual_ttl, json.dumps(result, default=str))
             except Exception:
                 pass
 

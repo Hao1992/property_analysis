@@ -1,5 +1,6 @@
 import { SchoolQualityData, SchoolEntry, PoiCategory } from '../types/analysis';
 import SourceBadge from './SourceBadge';
+import ConfidenceBadge from './ConfidenceBadge';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface Props {
@@ -63,7 +64,7 @@ function SchoolCard({ school, isNearest }: { school: SchoolEntry; isNearest: boo
       </div>
       <ScoreBar score={school.composite_score} />
       <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-        Score: proximity · {fundingLabel} · quality
+        {t.sections.schools.scoreLabel(fundingLabel)}
       </p>
     </div>
   )
@@ -83,9 +84,12 @@ export default function SchoolQualityModule({ data }: Props) {
 
   return (
     <div className="card p-5 space-y-4">
-      <div>
-        <p className="text-xs font-medium uppercase tracking-widest mb-1" style={{ color: 'var(--accent)' }}>{t.sections.schools.label}</p>
-        <h3 className="font-semibold" style={{ color: 'var(--text-main)' }}>{t.sections.schools.title}</h3>
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-widest mb-1" style={{ color: 'var(--accent)' }}>{t.sections.schools.label}</p>
+          <h3 className="font-semibold" style={{ color: 'var(--text-main)' }}>{t.sections.schools.title}</h3>
+        </div>
+        <ConfidenceBadge level="estimated" />
       </div>
 
       {schools.length === 0 ? (
