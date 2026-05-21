@@ -42,6 +42,17 @@ async def check_rate_limit(ip: str) -> tuple[bool, int]:
         return True, _DAILY_LIMIT - used - 1
 
 
+async def refund_rate_limit(ip: str) -> None:
+    """Undo one consumed analysis slot after an internal failure."""
+    if ip in _WHITELIST:
+        return
+    async with _lock:
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        key = f"{today}:{ip}"
+        if _store[key]:
+            _store[key].pop()
+
+
 def get_usage(ip: str) -> dict:
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     key = f"{today}:{ip}"

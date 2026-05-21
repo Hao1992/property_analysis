@@ -26,7 +26,7 @@ from scoring import engine, valuation
 from scoring.hidden_costs import estimate_hidden_costs
 from scoring.transaction_costs import calculate_acquisition_costs, estimate_seller_economics
 from utils.cache import cached
-from utils.rate_limiter import check_rate_limit, get_client_ip
+from utils.rate_limiter import check_rate_limit, get_client_ip, refund_rate_limit
 from utils import analytics, dashboard as dashboard_util
 
 router = APIRouter()
@@ -326,15 +326,19 @@ async def analyze(req: AnalyzeRequest, request: Request):
 
     user_answers_json = req.user_answers.model_dump_json() if req.user_answers else None
     _t0 = time.time()
-    data = await _run_full_analysis(
-        req.address, req.listing_price, req.buyer_profile,
-        user_answers_json, req.year_built, req.floor,
-        req.surface_m2, req.energy_cert, req.condition,
-        language=req.language,
-        has_parking_override=req.has_parking,
-        has_terrace_override=req.has_terrace,
-        has_views_override=req.has_views,
-    )
+    try:
+        data = await _run_full_analysis(
+            req.address, req.listing_price, req.buyer_profile,
+            user_answers_json, req.year_built, req.floor,
+            req.surface_m2, req.energy_cert, req.condition,
+            language=req.language,
+            has_parking_override=req.has_parking,
+            has_terrace_override=req.has_terrace,
+            has_views_override=req.has_views,
+        )
+    except Exception:
+        await refund_rate_limit(ip)
+        raise
     duration_ms = round((time.time() - _t0) * 1000)
 
     lat, lng      = data["lat"], data["lng"]
