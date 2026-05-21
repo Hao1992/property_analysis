@@ -3,6 +3,7 @@ import httpx
 import logging
 import math
 import os
+import urllib.parse
 
 logger = logging.getLogger(__name__)
 
@@ -11,6 +12,34 @@ _OVERPASS_ENDPOINTS = [
     "https://overpass.kumi.systems/api/interpreter",
     "https://overpass.openstreetmap.ru/api/interpreter",
 ]
+
+_HEADERS = {"User-Agent": "PropertyAnalyzer/2.0 (contact: dev@propertyanalyzer.es)"}
+
+
+async def _overpass_request(query: str, timeout: int = 35) -> list[dict]:
+    """Try each Overpass endpoint using GET (avoids IP blocks on POST seen on cloud IPs).
+    Falls back to POST if GET returns non-200. Returns list of elements or [].
+    """
+    encoded = urllib.parse.urlencode({"data": query})
+    for endpoint in _OVERPASS_ENDPOINTS:
+        # Try GET first — bypasses POST blocks seen on Railway/cloud IPs
+        for method in ("GET", "POST"):
+            try:
+                async with httpx.AsyncClient(timeout=timeout, headers=_HEADERS) as client:
+                    if method == "GET":
+                        r = await client.get(f"{endpoint}?{encoded}")
+                    else:
+                        r = await client.post(endpoint, data={"data": query})
+                    r.raise_for_status()
+                    elements = r.json().get("elements", [])
+                    if method == "POST":
+                        logger.debug("Overpass %s: GET failed, POST succeeded", endpoint)
+                    return elements
+            except Exception as exc:
+                logger.warning("Overpass %s %s failed: %s", method, endpoint, exc)
+    logger.error("All Overpass endpoints failed")
+    return []
+
 
 # Barcelona metro (TMB) and FGC station → line mapping.
 # OSM route_ref tags are often absent for FGC/Tramvia stations; this fills the gap.
@@ -109,19 +138,8 @@ async def fetch_pois(lat: float, lng: float, radius_m: int = 500) -> dict:
 ({chr(10).join(filters)});
 out center tags;
 """
-    _HEADERS = {"User-Agent": "PropertyAnalyzer/2.0 (contact: dev@propertyanalyzer.es)"}
-    elements = []
-    for endpoint in _OVERPASS_ENDPOINTS:
-        try:
-            async with httpx.AsyncClient(timeout=35, headers=_HEADERS) as client:
-                r = await client.post(endpoint, data={"data": query})
-                r.raise_for_status()
-                elements = r.json().get("elements", [])
-                break
-        except Exception as exc:
-            logger.warning("Overpass endpoint %s failed: %s", endpoint, exc)
-    else:
-        logger.error("All Overpass endpoints failed — POI data will be empty")
+    elements = await _overpass_request(query, timeout=35)
+    if not elements:
         result: dict[str, list] = {cat: [] for cat in CATEGORY_MAP}
         result["_unavailable"] = True  # type: ignore[assignment]
         return result
@@ -244,17 +262,7 @@ async def _fetch_transit_routes(lat: float, lng: float, radius_m: int) -> dict[s
 relation["type"="route"]["route"~"^(bus|subway|tram|light_rail)$"](around:{radius_m},{lat},{lng});
 out tags;
 """
-    _HEADERS = {"User-Agent": "PropertyAnalyzer/2.0 (contact: dev@propertyanalyzer.es)"}
-    relations = []
-    for endpoint in _OVERPASS_ENDPOINTS:
-        try:
-            async with httpx.AsyncClient(timeout=25, headers=_HEADERS) as client:
-                r = await client.post(endpoint, data={"data": query})
-                r.raise_for_status()
-                relations = r.json().get("elements", [])
-                break
-        except Exception as exc:
-            logger.warning("Overpass transit endpoint %s failed: %s", endpoint, exc)
+    relations = await _overpass_request(query, timeout=25)
 
     routes: dict[str, list[str]] = {}
     for rel in relations:
@@ -282,20 +290,7 @@ async def _fetch_road_noise(lat: float, lng: float, radius_m: int) -> int:
 ({filters});
 out center tags;
 """
-    _HEADERS = {"User-Agent": "PropertyAnalyzer/2.0 (contact: dev@propertyanalyzer.es)"}
-    ways = []
-    for endpoint in _OVERPASS_ENDPOINTS:
-        try:
-            async with httpx.AsyncClient(timeout=20, headers=_HEADERS) as client:
-                r = await client.post(endpoint, data={"data": query})
-                r.raise_for_status()
-                ways = r.json().get("elements", [])
-                break
-        except Exception as exc:
-            logger.warning("Overpass road-noise endpoint %s failed: %s", endpoint, exc)
-    else:
-        return 50  # neutral on total failure
-
+    ways = await _overpass_request(query, timeout=20)
     if not ways:
         return 95  # no major roads nearby → very quiet
 
