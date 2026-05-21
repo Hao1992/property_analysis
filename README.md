@@ -67,6 +67,7 @@ cd frontend && npm install
 cp backend/.env.example backend/.env
 # Required: ANTHROPIC_API_KEY (for AI narrative via claude -p subprocess)
 # Optional: GOOGLE_PLACES_API_KEY (enables OSM rating enrichment — free OSM baseline works without it)
+# Optional: DATABASE_URL=<postgres-url> (persistent analytics storage; Neon recommended)
 # Optional: ANALYTICS_TOKEN=<secret> (enables /admin/analytics dashboard)
 ```
 
@@ -331,11 +332,17 @@ Raw JSON at `/admin/analytics/json?token=<token>`.
 
 ## Analytics
 
-All analyses are logged to `$ANALYTICS_FILE` (default `/tmp/pa_analytics.jsonl`). Frontend behaviour events go to `$EVENTS_FILE` (`/tmp/pa_events.jsonl`).
+Analytics uses Postgres when `DATABASE_URL` is set, and automatically creates the required tables on first use:
+
+- `analysis_reports` — successful generated reports
+- `analysis_errors` — failed analysis attempts and exception summaries
+- `report_events` — frontend behaviour events such as section views and PDF downloads
+
+When `DATABASE_URL` is unset or unreachable, analytics falls back to `$ANALYTICS_FILE` (default `/tmp/pa_analytics.jsonl`) and `$EVENTS_FILE` (`/tmp/pa_events.jsonl`). This fallback is useful locally but ephemeral on Railway.
 
 Each analysis log entry captures: timestamp, anonymised IP hash, district, composite score, price bucket, language, duration (ms), Fotocasa scraper success, UserAnswers summary, score by dimension.
 
-Set `ANALYTICS_TOKEN` in `.env` to enable the dashboard at `/admin/analytics`.
+For production, create a Neon Postgres database and set `DATABASE_URL` in Railway using the pooled connection string, usually ending in `sslmode=require`. Set `ANALYTICS_TOKEN` to enable the dashboard at `/admin/analytics`.
 
 ---
 

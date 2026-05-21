@@ -325,6 +325,7 @@ async def analyze(req: AnalyzeRequest, request: Request):
         )
 
     user_answers_json = req.user_answers.model_dump_json() if req.user_answers else None
+    request_id = str(uuid.uuid4())
     _t0 = time.time()
     try:
         data = await _run_full_analysis(
@@ -336,8 +337,15 @@ async def analyze(req: AnalyzeRequest, request: Request):
             has_terrace_override=req.has_terrace,
             has_views_override=req.has_views,
         )
-    except Exception:
+    except Exception as exc:
         await refund_rate_limit(ip)
+        analytics.log_error(
+            ip=ip,
+            address=req.address,
+            error_type=exc.__class__.__name__,
+            error_msg=str(exc),
+            request_id=request_id,
+        )
         raise
     duration_ms = round((time.time() - _t0) * 1000)
 
@@ -378,7 +386,6 @@ async def analyze(req: AnalyzeRequest, request: Request):
         if isinstance(pois, list) and any(p.get("google_rating") is not None for p in pois[:3])
     )
 
-    request_id = str(uuid.uuid4())
     _score_dims = {d["name"]: d.get("score") for d in score_data.get("dimensions", [])}
     _user_ans   = req.user_answers.model_dump(exclude_none=True) if req.user_answers else {}
     analytics.log_analysis(
