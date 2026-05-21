@@ -217,9 +217,10 @@ async def _run_full_analysis(
 
     # Step 4: Synchronous derivations (no IO)
     valuation_data    = valuation.estimate_fair_value(median_ppm2, prop_data, listing_price)
+    _recommended_parking_m = parking_data.get("recommended_monthly_eur")
     _parking_m = (
-        parking_data["recommended_monthly_eur"]
-        if parking_data["parking_needed"] and parking_data["recommended_monthly_eur"] is not None
+        _recommended_parking_m
+        if parking_data["parking_needed"] and _recommended_parking_m is not None and _recommended_parking_m > 0
         else None
     )
     hidden_costs_data = estimate_hidden_costs(prop_data, listing_price, parking_monthly=_parking_m)
@@ -465,6 +466,11 @@ async def analyze(req: AnalyzeRequest, request: Request):
             has_private_parking=data["parking"]["has_private_parking"],
             nearby_garages_count=data["parking"]["nearby_garages_count"],
             nearby_garages=[GarageEntry(**g) for g in data["parking"]["nearby_garages"]],
+            nearby_garages_unpriced=[
+                GarageEntry(**g)
+                for g in data["parking"].get("nearby_garages_unpriced", [])
+            ],
+            nearby_garages_unpriced_count=data["parking"].get("nearby_garages_unpriced_count", 0),
             zone_type=data["parking"]["zone_type"],
             zone_monthly_eur=data["parking"].get("zone_monthly_eur"),
             street_tariff=data["parking"].get("street_tariff"),

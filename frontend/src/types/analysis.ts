@@ -63,6 +63,8 @@ export interface ParkingData {
   has_private_parking: boolean;
   nearby_garages_count: number;
   nearby_garages: GarageEntry[];
+  nearby_garages_unpriced?: GarageEntry[];
+  nearby_garages_unpriced_count?: number;
   zone_type: 'zona_verde' | 'zona_azul' | 'resident' | 'dum' | 'free' | 'mixed' | 'unknown';
   zone_monthly_eur?: number | null;
   street_tariff?: string | null;

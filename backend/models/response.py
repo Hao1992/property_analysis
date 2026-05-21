@@ -118,6 +118,8 @@ class ParkingData(BaseModel):
     has_private_parking: bool
     nearby_garages_count: int
     nearby_garages: list[GarageEntry]
+    nearby_garages_unpriced: list[GarageEntry] = []
+    nearby_garages_unpriced_count: int = 0
     zone_type: str                         # zona_verde | zona_azul | resident | dum | mixed | unknown
     zone_monthly_eur: Optional[int] = None # Deprecated: kept null unless a verified monthly price exists
     street_tariff: Optional[str] = None

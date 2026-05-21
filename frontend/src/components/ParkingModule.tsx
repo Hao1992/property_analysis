@@ -9,6 +9,8 @@ export default function ParkingModule({ data }: Props) {
   const pk = t.sections.parking
   const fmt = (n: number) => `€${n.toLocaleString('es-ES')}`
   const officialSegments = data.official_segments ?? []
+  const garageList = data.nearby_garages_unpriced ?? data.nearby_garages ?? []
+  const garageCount = data.nearby_garages_unpriced_count ?? data.nearby_garages_count
 
   const zoneBadgeCls: Record<string, string> = {
     zona_verde: 'bg-amber-50 border-amber-200 text-amber-700',
@@ -108,13 +110,13 @@ export default function ParkingModule({ data }: Props) {
       {/* Nearby garages */}
       <div>
         <p className="text-xs font-medium mb-2" style={{ color: 'var(--text-sub)' }}>
-          {pk.garagesNearby(data.nearby_garages_count)}
+          {pk.garagesNearby(garageCount)}
         </p>
-        {data.nearby_garages.length === 0 ? (
+        {garageList.length === 0 ? (
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{pk.garagesNone}</p>
         ) : (
           <div className="space-y-1.5">
-            {data.nearby_garages.map((g, i) => (
+            {garageList.map((g, i) => (
               <div key={i} className="flex items-center justify-between text-sm border rounded-lg px-3 py-2" style={{ borderColor: 'var(--border)' }}>
                 <div>
                   <span style={{ color: 'var(--text-main)' }}>{g.name}</span>
@@ -142,10 +144,10 @@ export default function ParkingModule({ data }: Props) {
                 {fmt(data.recommended_monthly_eur)}<span className="text-xs font-normal" style={{ color: 'var(--text-muted)' }}>{pk.perMonth}</span>
               </span>
             )}
-            {data.recommended_monthly_eur === 0 && (
+            {data.recommended_option === 'free' && data.recommended_monthly_eur === 0 && (
               <span className="text-sm font-bold text-green-600">{pk.zoneTypes.free}</span>
             )}
-            {data.recommended_monthly_eur == null && (
+            {(data.recommended_monthly_eur == null || data.recommended_monthly_eur < 0) && (
               <span className="text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>{pk.noVerifiedPrice}</span>
             )}
           </div>
@@ -159,7 +161,7 @@ export default function ParkingModule({ data }: Props) {
 
       <SourceBadge className="mt-1" sources={[
         { label: 'Area Verda', url: data.official_source_url ?? 'https://areaverda.cat/en/map', note: sourceNote },
-        { label: 'OSM Overpass', url: 'https://overpass-api.de/', note: pk.garagesNearby(data.nearby_garages_count) },
+        { label: 'OSM Overpass', url: 'https://overpass-api.de/', note: pk.garagesNearby(garageCount) },
       ]} />
     </div>
   )

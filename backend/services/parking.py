@@ -30,6 +30,7 @@ AREA_VERDA_META_PATH = AREA_VERDA_CACHE_PATH.with_suffix(".meta.json")
 AREA_VERDA_CACHE_TTL_SECONDS = int(os.getenv("AREA_VERDA_CACHE_TTL_SECONDS", "86400"))
 AREA_VERDA_SEGMENT_RADIUS_M = int(os.getenv("AREA_VERDA_SEGMENT_RADIUS_M", "250"))
 AREA_VERDA_SEGMENT_LIMIT = int(os.getenv("AREA_VERDA_SEGMENT_LIMIT", "8"))
+UNVERIFIED_MONTHLY_PRICE_SENTINEL = -1
 
 _OFFICIAL_SEGMENT_TYPES = {
     2: "zona_azul",
@@ -486,9 +487,9 @@ async def get_parking_analysis(
     zone_type = _zone_summary(official_segments, resident_zone)
     street_tariff, street_timetable = _tariff_summary(official_segments)
 
-    nearby: list[dict] = []
+    nearby_unpriced: list[dict] = []
     for g in garages_raw[:3]:
-        nearby.append({
+        nearby_unpriced.append({
             "name": g["name"],
             "distance_m": float(g["distance_m"]),
             "monthly_est_eur": None,
@@ -505,8 +506,12 @@ async def get_parking_analysis(
 
     return {
         "has_private_parking": has_private_parking,
-        "nearby_garages_count": len(nearby),
-        "nearby_garages": nearby,
+        # Legacy field: priced garages only. Keep it empty when prices are
+        # unavailable so older frontends do not render fake monthly prices.
+        "nearby_garages_count": 0,
+        "nearby_garages": [],
+        "nearby_garages_unpriced": nearby_unpriced,
+        "nearby_garages_unpriced_count": len(nearby_unpriced),
         "zone_type": zone_type,
         "zone_monthly_eur": None,
         "street_tariff": street_tariff,
@@ -519,6 +524,6 @@ async def get_parking_analysis(
         "official_data_last_modified": area_verda_data.last_modified if area_verda_data else None,
         "official_source_url": AREA_VERDA_MAP_URL,
         "recommended_option": option,
-        "recommended_monthly_eur": None,
+        "recommended_monthly_eur": None if has_private_parking else UNVERIFIED_MONTHLY_PRICE_SENTINEL,
         "parking_needed": parking_needed,
     }
