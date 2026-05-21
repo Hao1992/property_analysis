@@ -58,9 +58,9 @@ def _translate_zh(
     ite  = prop_data.get("ite_status", "UNKNOWN")
     derrama = hidden_costs_data.get("derrama_risk_label", "low")
     pct = airbnb_data.get("tourist_pct_building")
-    count_100m = airbnb_data.get("tourist_count_100m", 0)
-    count_500m = airbnb_data.get("tourist_count_500m", 0)
-    risk = airbnb_data.get("risk_label", "low")
+    count_100m = airbnb_data.get("tourist_count_100m") or 0
+    count_500m = airbnb_data.get("tourist_count_500m") or 0
+    risk = airbnb_data.get("risk_label") or "low"
     bars  = noise_data.get("bars_clubs_500m", 0)
     nightclubs = noise_data.get("nightclubs_500m", 0)
     night = noise_data.get("night_noise_score", 100)
@@ -80,16 +80,23 @@ def _translate_zh(
     ref_estimate = int(cadastral_value / 0.35) if cadastral_value else None
     catastro_gap = int(ref_estimate - listing_price) if (ref_estimate and listing_price and ref_estimate > listing_price) else None
     catastro_extra_tax = int(catastro_gap * 0.10) if catastro_gap else None
+    catastro_tax_detail = (
+        f"该房产的Catastro参考价估算约为 €{ref_estimate:,}（估算值，巴塞罗那老楼地籍估值通常为市场价的25–40%），"
+        + (f"高于挂牌价 €{int(listing_price):,} 约 €{catastro_gap:,}。" if catastro_gap and listing_price else "")
+        + "西班牙税务局有权按实际成交价与官方Catastro参考价中的较高者征收ITP（加泰罗尼亚税率10%）。"
+        + (f"若按参考价计算，你可能需要额外缴纳约 €{catastro_extra_tax:,} 的税款。" if catastro_extra_tax else "")
+        if ref_estimate is not None
+        else (
+            "当前公开数据未返回该房产的Catastro参考价估算。"
+            "西班牙税务局有权按实际成交价与官方Catastro参考价中的较高者征收ITP（加泰罗尼亚税率10%），"
+            "因此仍需在签约前单独核实官方valor de referencia。"
+        )
+    )
 
     zh_map: dict[str, dict] = {
         "catastro_tax_trap": {
             "title": "Catastro参考价可能高于成交价，税务局按高者征收ITP",
-            "detail": (
-                f"该房产的Catastro参考价估算约为 €{ref_estimate:,}（估算值，巴塞罗那老楼地籍估值通常为市场价的25–40%），"
-                + (f"高于挂牌价 €{int(listing_price):,} 约 €{catastro_gap:,}。" if catastro_gap and listing_price else "")
-                + "西班牙税务局有权按实际成交价与官方Catastro参考价中的较高者征收ITP（加泰罗尼亚税率10%）。"
-                + (f"若按参考价计算，你可能需要额外缴纳约 €{catastro_extra_tax:,} 的税款。" if catastro_extra_tax else "")
-            ),
+            "detail": catastro_tax_detail,
             "action": (
                 "签约前请在Catastro官网（sede.catastro.gob.es）查询精确的valor de referencia。"
                 "若高于成交价，建议咨询税务律师，评估是否提出异议或将额外税款纳入预算。"
@@ -350,9 +357,9 @@ def _transaction_costs(listing_price: float | None, prop_data: dict) -> list[dic
 
 def _airbnb_situation(airbnb_data: dict) -> list[dict]:
     pct = airbnb_data.get("tourist_pct_building")
-    count_100m = airbnb_data.get("tourist_count_100m", 0)
-    count_500m = airbnb_data.get("tourist_count_500m", 0)
-    risk = airbnb_data.get("risk_label", "low")
+    count_100m = airbnb_data.get("tourist_count_100m") or 0
+    count_500m = airbnb_data.get("tourist_count_500m") or 0
+    risk = airbnb_data.get("risk_label") or "low"
 
     severity = "red" if risk in ("high", "very_high") else "yellow" if risk == "medium" else "green"
 
