@@ -388,8 +388,8 @@ const strings = {
         priceUnavailable: 'Price unavailable',
         tariffUnavailable: 'Tariff unavailable',
         timetableUnavailable: 'Hours unavailable',
-        garagesNearby: (n: number) => `${n} public garage${n !== 1 ? 's' : ''} within 400m`,
-        garagesNone: 'No public garages found nearby',
+        garagesNearby: (n: number) => `${n} parking garage${n !== 1 ? 's' : ''} within 400m`,
+        garagesNone: 'No parking garages found nearby',
         recommendation: 'Best option for you',
         recommendedOptions: {
           private: 'Private parking (included)',
@@ -855,8 +855,8 @@ const strings = {
         priceUnavailable: '暂无价格',
         tariffUnavailable: '暂无费率',
         timetableUnavailable: '暂无收费时间',
-        garagesNearby: (n: number) => `400米内有 ${n} 个公共停车场`,
-        garagesNone: '附近未找到公共停车场',
+        garagesNearby: (n: number) => `400米内有 ${n} 个停车场`,
+        garagesNone: '附近未找到停车场',
         recommendation: '最优停车方案',
         recommendedOptions: {
           private: '私人停车位（已含）',

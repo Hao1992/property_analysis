@@ -37,10 +37,12 @@ DISTRICT_SLUGS: dict[str, str] = {
 
 # Calibrated district price ranges (€/m², 2024-2025, all conditions + sizes)
 # Source: Fotocasa medians confirmed via scraping + Tinsa Q4 2024 reports
+# Sarrià-Sant Gervasi updated 2026-05 to 6300 after cross-check vs Locabarcelona/E&V data;
+# earlier 7800 reflected premium Pedralbes sub-zone skew, not district-wide median.
 # p25 = lower quartile, median = median, p75 = upper quartile
 DISTRICT_STATIC: dict[str, dict] = {
     "Eixample":              {"p25": 4400, "median": 6000, "p75": 9500},
-    "Sarrià-Sant Gervasi":   {"p25": 5200, "median": 7800, "p75": 12500},
+    "Sarrià-Sant Gervasi":   {"p25": 4800, "median": 6300, "p75": 10500},
     "Les Corts":             {"p25": 4600, "median": 6600, "p75": 9200},
     "Gràcia":                {"p25": 4300, "median": 6000, "p75": 8800},
     "Ciutat Vella":          {"p25": 4100, "median": 6000, "p75": 9200},

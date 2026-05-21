@@ -272,6 +272,7 @@ async def _run_full_analysis(
         school_data=school_data,
         listing_price=listing_price,
         buyer_profile=buyer_profile,
+        user_answers=answers,
         language=language,
     )
 

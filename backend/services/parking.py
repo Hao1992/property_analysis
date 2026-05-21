@@ -425,14 +425,14 @@ def _tariff_summary(segments: list[tuple[float, AreaVerdaSegment]]) -> tuple[str
 
 
 async def _fetch_garages(lat: float, lng: float, radius: int = 400) -> list[dict]:
-    # Case-insensitive regex (,i flag) catches OSM taggers who write "Multi-storey" etc.
-    # Omit parking_entrance nodes: they include residential building entrances that are
-    # not public garages and have no access tag, so they slip past the access filter.
+    # Search all amenity=parking (not just multi-storey/underground) — many Barcelona
+    # garages are tagged without a parking subtype. Omit parking_entrance nodes because
+    # they include residential building entrances that slip past the access filter.
     query = f"""
 [out:json][timeout:20];
 (
-  node["amenity"="parking"]["parking"~"multi-storey|underground",i](around:{radius},{lat},{lng});
-  way["amenity"="parking"]["parking"~"multi-storey|underground",i](around:{radius},{lat},{lng});
+  node["amenity"="parking"](around:{radius},{lat},{lng});
+  way["amenity"="parking"](around:{radius},{lat},{lng});
 );
 out center tags;
 """

@@ -20,6 +20,7 @@ def generate_disclosures(
     school_data: dict,
     listing_price: float | None = None,
     buyer_profile: str | None = None,
+    user_answers=None,
     language: str = "en",
 ) -> list[dict]:
     items: list[dict] = []
@@ -34,6 +35,9 @@ def generate_disclosures(
     items += _noise_reality(noise_data)
     items += _neighbourhood_trajectory(trajectory_data)
     items += _cedula_habitabilidad(prop_data)
+    items += _plusvalia_nonresident(prop_data, listing_price)
+    items += _irnr_withholding_buyer(listing_price)
+    items += _rent_control_barcelona(user_answers)
 
     # Sort: red first, then yellow, then green/info
     _ORDER = {"red": 0, "yellow": 1, "green": 2, "info": 3}
@@ -41,7 +45,7 @@ def generate_disclosures(
 
     if language == "zh":
         items = _translate_zh(items, prop_data, airbnb_data, noise_data,
-                              hidden_costs_data, listing_price)
+                              hidden_costs_data, listing_price, user_answers)
     return items
 
 
@@ -52,6 +56,7 @@ def _translate_zh(
     noise_data: dict,
     hidden_costs_data: dict,
     listing_price: float | None,
+    user_answers=None,
 ) -> list[dict]:
     """Replace English disclosure text with Chinese equivalents."""
     year = prop_data.get("year_built")
@@ -75,6 +80,12 @@ def _translate_zh(
 
     # IRNR: imputed income = cadastral × 1.1%; tax = imputed income × 19% (EU residents) ≈ 0.2% cadastral
     annual_irnr = round(cadastral * 0.011 * 0.19) if cadastral else None
+
+    # Plusvalía estimate: land value (65% of cadastral) × coefficient 0.40 × 30% BCN rate
+    plusvalia_est = round(cadastral * 0.65 * 0.40 * 0.30) if cadastral else None
+    # 3% IRNR withholding: exactly 3% of total purchase price
+    withholding = round(listing_price * 0.03) if listing_price else None
+    rental_intent = getattr(user_answers, "rental_intent", None) if user_answers else None
 
     cadastral_value = prop_data.get("cadastral_value")
     ref_estimate = int(cadastral_value / 0.35) if cadastral_value else None
@@ -281,6 +292,87 @@ def _translate_zh(
             ) if year else "",
             "action": "要求卖方提供有效的居住证，已过期须计入成本和风险。",
         },
+        "plusvalia_nonresident_seller": {
+            "title": (
+                f"若卖方为非居民：你须直接承担市政增值税（Plusvalía）约 €{plusvalia_est:,}"
+                if plusvalia_est
+                else "若卖方为非居民：你须作为替代纳税人缴纳市政增值税（Plusvalía）"
+            ),
+            "detail": (
+                "根据《地方财政法》第106.2条（RDL 2/2004），若卖方非西班牙税务居民，"
+                "买方成为市政增值税（Plusvalía Municipal/IIVTNU）的替代纳税人（sujeto pasivo sustituto）。"
+                "这是第一位法律责任——巴塞罗那市政府可直接向你追缴，无需先向卖方追究。"
+                + (
+                    f"基于地籍估值（€{int(cadastral):,}）估算：土地部分（约65%） × 年限系数 × 30%（巴塞罗那税率）≈ €{plusvalia_est:,}。"
+                    if plusvalia_est and cadastral else ""
+                ) +
+                "实际金额取决于卖方持有年限及地籍土地价值。截止时间：签约后30个工作日内，通过ORGT提交Modelo 081。"
+            ),
+            "action": (
+                "签约前：（1）要求卖方出示西班牙税务居民证明（Certificado de residencia fiscal en España）；"
+                + (f"（2）在购房价格中预留约 €{plusvalia_est:,} 用于缴纳此税；" if plusvalia_est else "（2）协商在房价中保留估算金额；")
+                + "（3）签约后30个工作日内通过ORGT申报缴纳。"
+            ),
+        },
+        "irnr_withholding_buyer": {
+            "title": (
+                f"若卖方为非居民：签约时须扣留 €{withholding:,} 并在一个月内申报Modelo 211"
+                if withholding
+                else "若卖方为非居民：须从房款中扣留3%并于一个月内申报Modelo 211"
+            ),
+            "detail": (
+                "《非居民所得税法》第25.2条（RDL 5/2004）规定，向非居民卖家购房时，"
+                "买方须从支付金额中扣留成交价的3%，并于签约后一个自然月内通过Modelo 211缴纳给税务局（AEAT）。"
+                "注意：这是3%的总成交价，不是卖方利润。"
+                + (
+                    f"应扣金额：€{withholding:,}（= €{int(listing_price):,} × 3%）。"
+                    if withholding and listing_price else ""
+                ) +
+                "若未履行：（1）你须自行向AEAT承担这笔税款；"
+                "（2）你的产权将被登记留置权（afección registral），"
+                "将来转售或再抵押时会被发现并阻止交易。"
+                "公证人仅公证此义务，不代为缴纳——这完全是买方责任。"
+            ),
+            "action": (
+                f"签约时：支付卖方 €{int(listing_price - withholding):,}，扣留 €{withholding:,}。"
+                "签约后1个自然月内在AEAT提交Modelo 211。保留缴税凭证，转交卖方用于其Modelo 210申报。"
+                if withholding and listing_price
+                else "签约时从总价中扣留3%，签约后1个自然月内在AEAT提交Modelo 211。"
+            ),
+        },
+        "rent_control_barcelona": (
+            {
+                "title": "巴塞罗那旅游公寓牌照2028年11月强制到期——不建议以短租为目的购房",
+                "detail": (
+                    "巴塞罗那宪法法院已裁定全面禁止旅游公寓（HUT）牌照。"
+                    "所有现有牌照须于2028年11月前归还，新牌照自2012年起已停止发放。"
+                    "购买此房产后无法合法经营短租（2028年后）。"
+                    "试图通过「季节性租赁」（alquiler de temporada）规避长租管控的行为，"
+                    "依加泰罗尼亚法律被列为「极其严重」违规，最高罚款 €900,000。"
+                ),
+                "action": (
+                    "不要在财务模型中依赖短租收益。若房产目前持有HUT牌照，该牌照于2028年11月到期。"
+                    "长租可行，但须遵守租金管控上限——请查询SERPAVI了解本地址的最高可收租金。"
+                ),
+            }
+            if rental_intent == "short_term"
+            else {
+                "title": "巴塞罗那租金管控：长租收益受限，上限持续至2027年3月",
+                "detail": (
+                    "巴塞罗那已被列为「住宅市场紧张区域」（zona tensionada），依据《住房权利法》"
+                    "（Ley 12/2023），自2024年3月15日起生效，有效期至2027年3月15日。"
+                    "新租约不得超过：前一份合同租金 + IRAV年度指数（约2–3%），"
+                    "或SERPAVI参考指数上限——取两者中较低者。"
+                    "若你在加泰罗尼亚紧张区域持有5套或以上房产，将被认定为「大业主」（gran tenedor），"
+                    "须严格适用SERPAVI上限。违规罚款：€9,001–€900,000（2025年1月加泰罗尼亚法令）。"
+                ),
+                "action": (
+                    "报价前：（1）在 serpavi.mivau.gob.es 输入地籍参考号，查询本地址合法租金上限；"
+                    "（2）向卖方索取最近一份租赁合同金额，这将决定你的起始租金上限；"
+                    "（3）用SERPAVI最高值而非市场价预测租金收益。"
+                ),
+            }
+        ),
     }
 
     # Special case: neighbourhood_trajectory needs trajectory data passed in
@@ -703,3 +795,167 @@ def _cedula_habitabilidad(prop_data: dict) -> list[dict]:
             ),
         }]
     return []
+
+
+def _plusvalia_nonresident(
+    prop_data: dict,
+    listing_price: float | None,
+) -> list[dict]:
+    """Plusvalía Municipal — buyer is primary taxpayer when seller is non-resident.
+
+    Legal basis: Art. 106.2 RDL 2/2004 (TRLRHL). Barcelona rate: 30%.
+    Deadline: 30 working days after deed. File: Modelo 081, ORGT Barcelona.
+    """
+    cadastral = prop_data.get("cadastral_value")
+
+    if cadastral:
+        # Urban Barcelona: land component is ~65% of cadastral value.
+        # Coefficient 0.40 is a conservative mid-range estimate for 15–20 year holding.
+        # Actual coefficient varies 0.14–0.45 depending on holding period (RDL 26/2021 tables).
+        land_value = cadastral * 0.65
+        taxable_base = land_value * 0.40
+        plusvalia_est = round(taxable_base * 0.30)  # Barcelona rate: 30%
+        return [{
+            "id": "plusvalia_nonresident_seller",
+            "severity": "red",
+            "category": "legal",
+            "title": f"If seller is non-resident: you owe Plusvalía ~€{plusvalia_est:,} directly (primary liability)",
+            "detail": (
+                "Art. 106.2 RDL 2/2004 (TRLRHL): when the seller is not a Spanish tax resident, "
+                "the buyer becomes the substitute taxpayer (sujeto pasivo sustituto) for Plusvalía Municipal (IIVTNU). "
+                "This is primary liability — Barcelona municipality pursues you directly without first going after the seller. "
+                f"Estimate based on cadastral value (€{int(cadastral):,}): "
+                f"land component (~65%) × holding coefficient (~0.40) × 30% (Barcelona rate) ≈ €{plusvalia_est:,}. "
+                "Actual amount depends on the seller's acquisition date and the coefficient for that holding period. "
+                "Deadline: 30 working days from deed (Modelo 081, ORGT Barcelona)."
+            ),
+            "action": (
+                "Before signing: (1) Request the seller's Certificado de residencia fiscal en España from AEAT — "
+                "only this certificate confirms Spanish tax residency; a Spanish address alone is not sufficient. "
+                f"(2) If unconfirmed, negotiate a price retention of ~€{plusvalia_est:,} from the purchase price. "
+                "(3) File and pay Modelo 081 within 30 working days at ajuntament.barcelona.cat/orgt."
+            ),
+        }]
+    return [{
+        "id": "plusvalia_nonresident_seller",
+        "severity": "red",
+        "category": "legal",
+        "title": "If seller is non-resident: you are the primary taxpayer for Plusvalía Municipal",
+        "detail": (
+            "Art. 106.2 RDL 2/2004: when the seller is not a Spanish tax resident, the buyer becomes "
+            "the substitute taxpayer (sujeto pasivo sustituto) for Plusvalía Municipal (IIVTNU). "
+            "Barcelona's rate is 30%. The municipality pursues you directly — this is primary, not subsidiary, liability. "
+            "Amount depends on the cadastral land value and how long the seller has owned the property."
+        ),
+        "action": (
+            "Request the seller's Certificado de residencia fiscal en España before signing. "
+            "If unconfirmed, negotiate a price retention to cover the estimated tax. "
+            "File Modelo 081 at ORGT Barcelona within 30 working days of signing."
+        ),
+    }]
+
+
+def _irnr_withholding_buyer(listing_price: float | None) -> list[dict]:
+    """3% IRNR withholding — buyer must withhold and remit to AEAT.
+
+    Legal basis: Art. 25.2 RDL 5/2004 (LIRNR). Modelo 211.
+    Deadline: 1 calendar month from deed.
+    Failure creates: personal liability to AEAT + afección registral (property title lien).
+    """
+    if listing_price:
+        withholding = round(listing_price * 0.03)
+        seller_receives = int(listing_price - withholding)
+        return [{
+            "id": "irnr_withholding_buyer",
+            "severity": "red",
+            "category": "legal",
+            "title": f"If seller is non-resident: you must withhold €{withholding:,} and file Modelo 211",
+            "detail": (
+                f"Art. 25.2 LIRNR (RDL 5/2004): buyer must withhold 3% of the purchase price "
+                f"(€{withholding:,}) from payment to a non-resident seller and remit it to AEAT. "
+                f"This is 3% of the total price — not of the seller's gain. "
+                f"If you fail: (1) You are personally liable to AEAT for the full €{withholding:,}. "
+                "(2) Your newly acquired property is encumbered with an afección registral (title lien) "
+                "that will block future resale or remortgaging until resolved. "
+                "The notary notarizes this obligation but does NOT file or pay it — "
+                "that is entirely the buyer's responsibility."
+            ),
+            "action": (
+                f"At signing: pay the seller €{seller_receives:,} and retain €{withholding:,}. "
+                "File Modelo 211 at the AEAT office for the property's location within 1 calendar month of the deed. "
+                "Keep the payment receipt — provide a copy to the seller for their Modelo 210 tax credit."
+            ),
+        }]
+    return [{
+        "id": "irnr_withholding_buyer",
+        "severity": "red",
+        "category": "legal",
+        "title": "If seller is non-resident: withhold 3% of purchase price at signing (Modelo 211)",
+        "detail": (
+            "Art. 25.2 LIRNR: buyer must withhold 3% of the total purchase price "
+            "from the seller's payment and remit it to AEAT via Modelo 211 within 1 calendar month. "
+            "Failure creates personal liability to AEAT and an afección registral (property title lien). "
+            "The notary does not file this — it is the buyer's obligation."
+        ),
+        "action": (
+            "Withhold 3% of agreed price at signing. "
+            "File Modelo 211 at AEAT within 1 calendar month of the deed."
+        ),
+    }]
+
+
+def _rent_control_barcelona(user_answers=None) -> list[dict]:
+    """Barcelona zona tensionada rent control warning.
+
+    Legal basis: Ley 12/2023 + Resolució Generalitat 15 March 2024.
+    Only shown to buyers with rental intent.
+    """
+    rental_intent = getattr(user_answers, "rental_intent", None) if user_answers else None
+    if rental_intent not in ("long_term", "short_term"):
+        return []
+
+    if rental_intent == "short_term":
+        return [{
+            "id": "rent_control_barcelona",
+            "severity": "red",
+            "category": "legal",
+            "title": "Barcelona tourist rental licenses expire November 2028 — do not buy for short-term rental",
+            "detail": (
+                "Barcelona's Constitutional Court upheld a full ban on tourist apartment (HUT) licenses. "
+                "All existing licenses must be relinquished by November 2028. "
+                "New licenses have been under moratorium since 2012. "
+                "Attempting to use 'seasonal rental' (alquiler de temporada) contracts "
+                "to evade long-term rent controls is classified as a 'very serious' infraction "
+                "under Catalan law (Decret Generalitat, January 2025) — fine: €90,001–€900,000."
+            ),
+            "action": (
+                "Do not rely on short-term rental income in your financial model. "
+                "If the property currently has an HUT license, that license expires November 2028. "
+                "Long-term rental is subject to rent control caps — query SERPAVI (serpavi.mivau.gob.es) "
+                "for the legal ceiling for this address."
+            ),
+        }]
+
+    # long_term
+    return [{
+        "id": "rent_control_barcelona",
+        "severity": "yellow",
+        "category": "legal",
+        "title": "Barcelona rent control: long-term rental income is legally capped until March 2027",
+        "detail": (
+            "Barcelona is declared a zona de mercado residencial tensionado under Ley 12/2023, "
+            "effective 15 March 2024 — valid until 15 March 2027 (extendable). "
+            "New rental contracts cannot exceed: the prior tenant's rent + IRAV annual index (~2–3%), "
+            "OR the SERPAVI reference ceiling for this address — whichever is lower. "
+            "If you own 5+ dwellings in Catalonia's tensioned zones, you are a 'gran tenedor' "
+            "and must apply the SERPAVI ceiling with no exceptions. "
+            "Penalties for exceeding the cap: €9,001–€900,000 (Decret Generalitat, January 2025). "
+            "Any contract clause above the legal ceiling is automatically null and void."
+        ),
+        "action": (
+            "Before making an offer: (1) Query serpavi.mivau.gob.es with the cadastral reference "
+            "to get the legal rent ceiling for this address. "
+            "(2) Request the last rental contract from the seller — this sets your cap if rented in the last 5 years. "
+            "(3) Model your yield using the SERPAVI maximum, not current market asking rents."
+        ),
+    }]

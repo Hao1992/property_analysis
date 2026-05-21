@@ -18,9 +18,9 @@ def estimate_hidden_costs(prop: dict, listing_price: float | None = None, parkin
     has_lift   = prop.get("has_lift", False)
     ite_status = prop.get("ite_status", "UNKNOWN")
 
-    # IBI (municipal property tax) — BCN average rate ~0.75 % of cadastral value
+    # IBI (municipal property tax) — Barcelona municipal rate is 0.66% of cadastral value
     cadastral  = prop.get("cadastral_value") or (listing_price * 0.5 if listing_price else surface * 1_800)
-    ibi_annual = round(cadastral * 0.0075)
+    ibi_annual = round(cadastral * 0.0066)
 
     # Community fee: older buildings with lifts cost more to maintain
     age_known = age is not None
