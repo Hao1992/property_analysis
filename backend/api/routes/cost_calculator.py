@@ -217,16 +217,19 @@ async def calculate_costs(req: CostCalcRequest) -> CostCalcResponse:
 
 
 def _calc_itp_catalonia(price: float) -> tuple[float, float]:
-    """Returns (tax_amount, effective_rate_pct) for Catalonia progressive ITP."""
+    """Returns (tax_amount, effective_rate_pct) for Catalonia progressive ITP.
+    Brackets per Decreto Ley 5/2025 (effective June 27, 2025):
+      ≤€600k: 10% | €600k–€900k: 11% | €900k–€1.5M: 12% | >€1.5M: 13%
+    """
     if price <= 600_000:
         tax = price * 0.10
-        return tax, 10.0
-    elif price <= 1_000_000:
-        tax = 600_000 * 0.10 + (price - 600_000) * 0.11
-        return tax, round(tax / price * 100, 2)
+    elif price <= 900_000:
+        tax = 60_000 + (price - 600_000) * 0.11
+    elif price <= 1_500_000:
+        tax = 60_000 + 33_000 + (price - 900_000) * 0.12
     else:
-        tax = 600_000 * 0.10 + 400_000 * 0.11 + (price - 1_000_000) * 0.12
-        return tax, round(tax / price * 100, 2)
+        tax = 60_000 + 33_000 + 72_000 + (price - 1_500_000) * 0.13
+    return tax, round(tax / price * 100, 2)
 
 
 def _estimate_notary(price: float) -> float:
