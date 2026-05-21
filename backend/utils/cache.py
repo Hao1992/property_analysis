@@ -6,7 +6,7 @@ from functools import wraps
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 CACHE_TTL = int(os.getenv("CACHE_TTL_SECONDS", 86400))
-CACHE_VERSION = os.getenv("CACHE_VERSION", "2026-05-21-parking-zone-v2")
+CACHE_VERSION = os.getenv("CACHE_VERSION", "2026-05-21-area-verda-v1")
 
 _redis = None
 

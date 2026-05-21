@@ -69,6 +69,7 @@ cp backend/.env.example backend/.env
 # Optional: GOOGLE_PLACES_API_KEY (enables OSM rating enrichment — free OSM baseline works without it)
 # Optional: DATABASE_URL=<postgres-url> (persistent analytics storage; Neon recommended)
 # Optional: ANALYTICS_TOKEN=<secret> (enables /admin/analytics dashboard)
+# Optional: AREA_VERDA_CACHE_TTL_SECONDS=86400 (refresh official parking map cache daily)
 ```
 
 ### 3. Start services
@@ -183,6 +184,7 @@ property_analysis/
 | [Fotocasa](https://www.fotocasa.es) | Active listing comparables by district and size | Free (scraper) |
 | [INE](https://www.ine.es) | Census sections, median price/m² (reference only) | Free |
 | [Open Data BCN](https://opendata-ajuntament.barcelona.cat) | Safety indices, business licences, works permits | Free |
+| [Area Verda](https://areaverda.cat/en/map) | Official regulated street-parking segments, tariffs, hours, resident zones | Free |
 | [Inside Airbnb](http://insideairbnb.com) | Tourist apartment density | Free |
 | OSM Baseline Ratings | POI ratings from OSM name/type tags | Free |
 | Claude Code CLI | AI narrative generation | Free (subscription) |

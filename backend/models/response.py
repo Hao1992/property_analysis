@@ -100,17 +100,34 @@ class NoiseData(BaseModel):
 class GarageEntry(BaseModel):
     name: str
     distance_m: float
-    monthly_est_eur: int
+    monthly_est_eur: Optional[int] = None
+
+
+class ParkingStreetSegment(BaseModel):
+    zone_type: str                         # zona_verde | zona_azul | resident | dum
+    distance_m: float
+    location: Optional[str] = None
+    tariff: Optional[str] = None
+    timetable: Optional[str] = None
+    places: Optional[str] = None
+    resident_zone: Optional[str] = None
+    dum_zone: Optional[str] = None
 
 
 class ParkingData(BaseModel):
     has_private_parking: bool
     nearby_garages_count: int
     nearby_garages: list[GarageEntry]
-    zone_type: str                         # zona_verde | zona_azul | free | mixed
-    zone_monthly_eur: Optional[int] = None # None when zone is free
-    recommended_option: str                # private | garage | street | free
-    recommended_monthly_eur: Optional[int] = None  # None when has_private_parking=True
+    zone_type: str                         # zona_verde | zona_azul | resident | dum | mixed | unknown
+    zone_monthly_eur: Optional[int] = None # Deprecated: kept null unless a verified monthly price exists
+    street_tariff: Optional[str] = None
+    street_timetable: Optional[str] = None
+    resident_zone: Optional[str] = None
+    official_segments: list[ParkingStreetSegment] = []
+    official_data_last_modified: Optional[str] = None
+    official_source_url: Optional[str] = None
+    recommended_option: str                # private | garage | street | unknown
+    recommended_monthly_eur: Optional[int] = None
     parking_needed: bool                   # has_car=True AND has_parking=False
 
 

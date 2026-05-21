@@ -45,17 +45,34 @@ export interface PropertyData {
 export interface GarageEntry {
   name: string;
   distance_m: number;
-  monthly_est_eur: number;
+  monthly_est_eur?: number | null;
+}
+
+export interface ParkingStreetSegment {
+  zone_type: 'zona_verde' | 'zona_azul' | 'resident' | 'dum';
+  distance_m: number;
+  location?: string | null;
+  tariff?: string | null;
+  timetable?: string | null;
+  places?: string | null;
+  resident_zone?: string | null;
+  dum_zone?: string | null;
 }
 
 export interface ParkingData {
   has_private_parking: boolean;
   nearby_garages_count: number;
   nearby_garages: GarageEntry[];
-  zone_type: 'zona_verde' | 'zona_azul' | 'free' | 'mixed';
-  zone_monthly_eur?: number;
-  recommended_option: 'private' | 'garage' | 'street' | 'free';
-  recommended_monthly_eur?: number;
+  zone_type: 'zona_verde' | 'zona_azul' | 'resident' | 'dum' | 'free' | 'mixed' | 'unknown';
+  zone_monthly_eur?: number | null;
+  street_tariff?: string | null;
+  street_timetable?: string | null;
+  resident_zone?: string | null;
+  official_segments: ParkingStreetSegment[];
+  official_data_last_modified?: string | null;
+  official_source_url?: string | null;
+  recommended_option: 'private' | 'garage' | 'street' | 'free' | 'unknown';
+  recommended_monthly_eur?: number | null;
   parking_needed: boolean;
 }
 

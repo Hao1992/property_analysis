@@ -16,7 +16,7 @@ from models.response import (
     HiddenCostsData, NeighbourhoodTrajectoryData, NarrativeData,
     DisclosureItem, MarketComparables, ComparableListing,
     AcquisitionCostsData, SellerEconomicsData,
-    ParkingData, GarageEntry,
+    ParkingData, GarageEntry, ParkingStreetSegment,
 )
 from services import geocoder, overpass, google_places, catastro, ine, open_data_bcn
 from services import airbnb_saturation, school_quality, noise_ecosystem, neighbourhood_trajectory
@@ -466,9 +466,18 @@ async def analyze(req: AnalyzeRequest, request: Request):
             nearby_garages_count=data["parking"]["nearby_garages_count"],
             nearby_garages=[GarageEntry(**g) for g in data["parking"]["nearby_garages"]],
             zone_type=data["parking"]["zone_type"],
-            zone_monthly_eur=data["parking"]["zone_monthly_eur"],
+            zone_monthly_eur=data["parking"].get("zone_monthly_eur"),
+            street_tariff=data["parking"].get("street_tariff"),
+            street_timetable=data["parking"].get("street_timetable"),
+            resident_zone=data["parking"].get("resident_zone"),
+            official_segments=[
+                ParkingStreetSegment(**segment)
+                for segment in data["parking"].get("official_segments", [])
+            ],
+            official_data_last_modified=data["parking"].get("official_data_last_modified"),
+            official_source_url=data["parking"].get("official_source_url"),
             recommended_option=data["parking"]["recommended_option"],
-            recommended_monthly_eur=data["parking"]["recommended_monthly_eur"],
+            recommended_monthly_eur=data["parking"].get("recommended_monthly_eur"),
             parking_needed=data["parking"]["parking_needed"],
         ) if data.get("parking") else None,
         score=CompositeScore(
