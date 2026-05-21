@@ -1,4 +1,5 @@
 import asyncio
+import os
 import time
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -6,6 +7,13 @@ from datetime import datetime, timezone
 _DAILY_LIMIT = 5
 _store: dict[str, list[float]] = defaultdict(list)
 _lock = asyncio.Lock()
+
+# Comma-separated IPs that bypass rate limiting (set RATE_LIMIT_WHITELIST in Railway env vars)
+_WHITELIST: set[str] = {
+    ip.strip()
+    for ip in os.getenv("RATE_LIMIT_WHITELIST", "").split(",")
+    if ip.strip()
+}
 
 
 def get_client_ip(request) -> str:
@@ -22,6 +30,8 @@ def get_client_ip(request) -> str:
 
 async def check_rate_limit(ip: str) -> tuple[bool, int]:
     """Check if IP is within daily limit. Returns (allowed, remaining). Thread-safe."""
+    if ip in _WHITELIST:
+        return True, _DAILY_LIMIT  # whitelisted IPs always allowed, full quota shown
     async with _lock:
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         key = f"{today}:{ip}"
