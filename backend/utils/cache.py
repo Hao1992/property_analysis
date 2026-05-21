@@ -6,6 +6,7 @@ from functools import wraps
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 CACHE_TTL = int(os.getenv("CACHE_TTL_SECONDS", 86400))
+CACHE_VERSION = os.getenv("CACHE_VERSION", "2026-05-21-parking-zone-v2")
 
 _redis = None
 
@@ -57,7 +58,7 @@ def cached(ttl: int = CACHE_TTL, degraded_ttl: int = 300):
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):
-            cache_input = str(args) + str(sorted(kwargs.items()))
+            cache_input = CACHE_VERSION + str(args) + str(sorted(kwargs.items()))
             key = f"pa:{func.__name__}:{hashlib.md5(cache_input.encode()).hexdigest()}"
 
             r = await get_redis()

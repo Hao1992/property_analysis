@@ -19,7 +19,10 @@ _DISTRICT_ZONE: dict[str, str] = {
     "Horta-Guinardó":      "zona_azul",
     "Sant Andreu":         "zona_azul",
     "Nou Barris":          "mixed",
-    "Sarrià-Sant Gervasi": "free",
+    # Sarrià-Sant Gervasi is not reliably free at district level. Putxet /
+    # Avinguda Tibidabo side streets include resident green, blue metered
+    # parking, and paid garages, so use a paid mixed-zone estimate.
+    "Sarrià-Sant Gervasi": "mixed",
 }
 
 _DISTRICT_GARAGE_MONTHLY: dict[str, int] = {
