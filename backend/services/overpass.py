@@ -15,26 +15,28 @@ _OVERPASS_ENDPOINTS = [
 
 _HEADERS = {"User-Agent": "PropertyAnalyzer/2.0 (contact: dev@propertyanalyzer.es)"}
 
+# Hard cap: total time we'll spend on Overpass across all attempts.
+# Must keep the full analysis well under Railway's connection timeout.
+_OVERPASS_PER_REQUEST_TIMEOUT = int(os.getenv("OVERPASS_TIMEOUT", "8"))
 
-async def _overpass_request(query: str, timeout: int = 35) -> list[dict]:
+
+async def _overpass_request(query: str, timeout: int | None = None) -> list[dict]:
     """Try each Overpass endpoint using GET (avoids IP blocks on POST seen on cloud IPs).
-    Falls back to POST if GET returns non-200. Returns list of elements or [].
+    Each attempt is capped at _OVERPASS_PER_REQUEST_TIMEOUT seconds so the full
+    analysis stays within Railway's connection window.
     """
+    t = timeout or _OVERPASS_PER_REQUEST_TIMEOUT
     encoded = urllib.parse.urlencode({"data": query})
     for endpoint in _OVERPASS_ENDPOINTS:
-        # Try GET first — bypasses POST blocks seen on Railway/cloud IPs
         for method in ("GET", "POST"):
             try:
-                async with httpx.AsyncClient(timeout=timeout, headers=_HEADERS) as client:
+                async with httpx.AsyncClient(timeout=t, headers=_HEADERS) as client:
                     if method == "GET":
                         r = await client.get(f"{endpoint}?{encoded}")
                     else:
                         r = await client.post(endpoint, data={"data": query})
                     r.raise_for_status()
-                    elements = r.json().get("elements", [])
-                    if method == "POST":
-                        logger.debug("Overpass %s: GET failed, POST succeeded", endpoint)
-                    return elements
+                    return r.json().get("elements", [])
             except Exception as exc:
                 logger.warning("Overpass %s %s failed: %s", method, endpoint, exc)
     logger.error("All Overpass endpoints failed")
