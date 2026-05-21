@@ -151,165 +151,169 @@ async def _run_full_analysis(
     lat, lng = geo["lat"], geo["lng"]
     district = open_data_bcn.get_district_from_address(geo["address"])
 
-    # Step 1: Parallel data fetch (all IO-bound tasks)
-    (
-        poi_raw, prop_data, safety_data, census_section,
-        airbnb_data, trajectory_data,
-    ) = await asyncio.gather(
-        overpass.fetch_pois(lat, lng),
-        catastro.get_property_data(lat, lng),
-        open_data_bcn.get_safety_data(lat, lng, district),
-        ine.get_census_section_from_coords(lat, lng),
-        airbnb_saturation.get_airbnb_saturation(lat, lng, district),
-        neighbourhood_trajectory.get_neighbourhood_trajectory(lat, lng, district),
-    )
-
-    # Step 1b: Market comparables (parallel, non-blocking — failure just omits the section)
     try:
-        surface_for_comp = (
-            surface_m2_override
-            or (prop_data.get("surface_m2") if prop_data else None)
-        )
-        comparables_data = await fotocasa_scraper.get_market_comparables(
-            district=district,
-            surface_m2=surface_for_comp,
-            listing_price=listing_price,
-        )
-    except Exception:
-        comparables_data = None
+        async with asyncio.timeout(25):
+            # Step 1: Parallel data fetch (all IO-bound tasks)
+            (
+                poi_raw, prop_data, safety_data, census_section,
+                airbnb_data, trajectory_data,
+            ) = await asyncio.gather(
+                overpass.fetch_pois(lat, lng),
+                catastro.get_property_data(lat, lng),
+                open_data_bcn.get_safety_data(lat, lng, district),
+                ine.get_census_section_from_coords(lat, lng),
+                airbnb_saturation.get_airbnb_saturation(lat, lng, district),
+                neighbourhood_trajectory.get_neighbourhood_trajectory(lat, lng, district),
+            )
 
-    # Apply manual overrides when Catastro returns null
-    overrides: dict = {}
-    if year_built_override is not None and prop_data.get("year_built") is None:
-        overrides["year_built"] = year_built_override
-    if floor_override is not None and prop_data.get("floor") is None:
-        overrides["floor"] = floor_override
-    if surface_m2_override is not None and prop_data.get("surface_m2") is None:
-        overrides["surface_m2"] = surface_m2_override
-    if energy_cert_override is not None and prop_data.get("energy_cert") is None:
-        overrides["energy_cert"] = energy_cert_override.upper()
-    if condition_override == "renovated":
-        overrides["renovated"] = True
-    # Apply unconditionally — Catastro never provides these
-    if has_parking_override is not None:
-        overrides["has_parking"] = has_parking_override
-    if has_terrace_override is not None:
-        overrides["has_terrace"] = has_terrace_override
-    if has_views_override is not None:
-        overrides["has_views"] = has_views_override
-    if overrides:
-        prop_data = {**prop_data, **overrides}
+            # Step 1b: Market comparables (parallel, non-blocking — failure just omits the section)
+            try:
+                surface_for_comp = (
+                    surface_m2_override
+                    or (prop_data.get("surface_m2") if prop_data else None)
+                )
+                comparables_data = await fotocasa_scraper.get_market_comparables(
+                    district=district,
+                    surface_m2=surface_for_comp,
+                    listing_price=listing_price,
+                )
+            except Exception:
+                comparables_data = None
 
-    # Step 2: OSM baseline ratings (replaces Google Places — zero cost) + parking in parallel
-    enriched_poi, parking_data = await asyncio.gather(
-        google_places.enrich_with_ratings(poi_raw),
-        get_parking_analysis(
-            lat=lat,
-            lng=lng,
-            district=district,
-            has_private_parking=bool(prop_data.get("has_parking")),
-            has_car=bool(answers.has_car) if answers else False,
-        ),
-    )
+            # Apply manual overrides when Catastro returns null
+            overrides: dict = {}
+            if year_built_override is not None and prop_data.get("year_built") is None:
+                overrides["year_built"] = year_built_override
+            if floor_override is not None and prop_data.get("floor") is None:
+                overrides["floor"] = floor_override
+            if surface_m2_override is not None and prop_data.get("surface_m2") is None:
+                overrides["surface_m2"] = surface_m2_override
+            if energy_cert_override is not None and prop_data.get("energy_cert") is None:
+                overrides["energy_cert"] = energy_cert_override.upper()
+            if condition_override == "renovated":
+                overrides["renovated"] = True
+            # Apply unconditionally — Catastro never provides these
+            if has_parking_override is not None:
+                overrides["has_parking"] = has_parking_override
+            if has_terrace_override is not None:
+                overrides["has_terrace"] = has_terrace_override
+            if has_views_override is not None:
+                overrides["has_views"] = has_views_override
+            if overrides:
+                prop_data = {**prop_data, **overrides}
 
-    # Step 3: INE price data
-    median_ppm2 = await ine.get_median_price_ppm2(census_section or "", district)
+            # Step 2: OSM baseline ratings (replaces Google Places — zero cost) + parking in parallel
+            enriched_poi, parking_data = await asyncio.gather(
+                google_places.enrich_with_ratings(poi_raw),
+                get_parking_analysis(
+                    lat=lat,
+                    lng=lng,
+                    district=district,
+                    has_private_parking=bool(prop_data.get("has_parking")),
+                    has_car=bool(answers.has_car) if answers else False,
+                ),
+            )
 
-    # Step 4: Synchronous derivations (no IO)
-    valuation_data    = valuation.estimate_fair_value(median_ppm2, prop_data, listing_price)
-    _parking_m = (
-        parking_data["recommended_monthly_eur"]
-        if parking_data["parking_needed"] and parking_data["recommended_monthly_eur"] is not None
-        else None
-    )
-    hidden_costs_data = estimate_hidden_costs(prop_data, listing_price, parking_monthly=_parking_m)
-    school_data       = school_quality.get_school_quality(poi_raw, enriched_poi)
-    noise_data        = noise_ecosystem.get_noise_ecosystem(poi_raw, prop_data)
+            # Step 3: INE price data
+            median_ppm2 = await ine.get_median_price_ppm2(census_section or "", district)
 
-    # Derive price fairness from Fotocasa comparables position (reliable market data).
-    # Fall back to INE-based delta only when comparables unavailable.
-    _comp_position = comparables_data.get("position") if comparables_data else None
-    _comp_position_score = {
-        "well_below":   100,
-        "below":         80,
-        "within_range":  65,
-        "above":         45,
-        "well_above":    20,
-    }.get(_comp_position) if _comp_position else None
+            # Step 4: Synchronous derivations (no IO)
+            valuation_data    = valuation.estimate_fair_value(median_ppm2, prop_data, listing_price)
+            _parking_m = (
+                parking_data["recommended_monthly_eur"]
+                if parking_data["parking_needed"] and parking_data["recommended_monthly_eur"] is not None
+                else None
+            )
+            hidden_costs_data = estimate_hidden_costs(prop_data, listing_price, parking_monthly=_parking_m)
+            school_data       = school_quality.get_school_quality(poi_raw, enriched_poi)
+            noise_data        = noise_ecosystem.get_noise_ecosystem(poi_raw, prop_data)
 
-    market_data = {
-        "annual_growth_pct":      4.2,
-        "days_on_market":         55,
-        "vs_fair_value_pct":      valuation_data.get("vs_listing_pct", 0),
-        "comparables_position_score": _comp_position_score,
-        "rental_yield":           0.042,
-        "city_avg_yield":         0.045,
-    }
+            # Derive price fairness from Fotocasa comparables position (reliable market data).
+            # Fall back to INE-based delta only when comparables unavailable.
+            _comp_position = comparables_data.get("position") if comparables_data else None
+            _comp_position_score = {
+                "well_below":   100,
+                "below":         80,
+                "within_range":  65,
+                "above":         45,
+                "well_above":    20,
+            }.get(_comp_position) if _comp_position else None
 
-    # Transaction cost data (buyer + seller)
-    acq_costs_data    = calculate_acquisition_costs(listing_price) if listing_price else None
-    seller_econ_data  = estimate_seller_economics(
-        listing_price,
-        cadastral_value=prop_data.get("cadastral_value"),
-    ) if listing_price else None
+            market_data = {
+                "annual_growth_pct":      4.2,
+                "days_on_market":         55,
+                "vs_fair_value_pct":      valuation_data.get("vs_listing_pct", 0),
+                "comparables_position_score": _comp_position_score,
+                "rental_yield":           0.042,
+                "city_avg_yield":         0.045,
+            }
 
-    score_data = engine.calculate_composite(
-        poi_raw, enriched_poi, safety_data,
-        prop_data, valuation_data, market_data,
-        school_data, noise_data, trajectory_data,
-        hidden_costs_data, airbnb_data,
-        user_answers=answers,
-        legacy_profile=buyer_profile,
-    )
+            # Transaction cost data (buyer + seller)
+            acq_costs_data    = calculate_acquisition_costs(listing_price) if listing_price else None
+            seller_econ_data  = estimate_seller_economics(
+                listing_price,
+                cadastral_value=prop_data.get("cadastral_value"),
+            ) if listing_price else None
 
-    disclosure_items = disclosures.generate_disclosures(
-        prop_data=prop_data,
-        airbnb_data=airbnb_data,
-        noise_data=noise_data,
-        hidden_costs_data=hidden_costs_data,
-        trajectory_data=trajectory_data,
-        school_data=school_data,
-        listing_price=listing_price,
-        buyer_profile=buyer_profile,
-        language=language,
-    )
+            score_data = engine.calculate_composite(
+                poi_raw, enriched_poi, safety_data,
+                prop_data, valuation_data, market_data,
+                school_data, noise_data, trajectory_data,
+                hidden_costs_data, airbnb_data,
+                user_answers=answers,
+                legacy_profile=buyer_profile,
+            )
 
-    analysis_flat = {
-        "address":                  geo["display_name"],
-        "lat":                      lat,
-        "lng":                      lng,
-        "property":                 prop_data,
-        "safety":                   safety_data,
-        "airbnb_saturation":        airbnb_data,
-        "school_quality":           school_data,
-        "noise":                    noise_data,
-        "neighbourhood_trajectory": trajectory_data,
-        "valuation":                valuation_data,
-        "acquisition_costs":        acq_costs_data,
-        "seller_economics":         seller_econ_data,
-        "hidden_costs":             hidden_costs_data,
-        "parking":                  parking_data,
-        "score":                    score_data,
-        "disclosures":              disclosure_items,
-        "enriched_poi":             enriched_poi,
-        "poi_raw":                  poi_raw,
-    }
+            disclosure_items = disclosures.generate_disclosures(
+                prop_data=prop_data,
+                airbnb_data=airbnb_data,
+                noise_data=noise_data,
+                hidden_costs_data=hidden_costs_data,
+                trajectory_data=trajectory_data,
+                school_data=school_data,
+                listing_price=listing_price,
+                buyer_profile=buyer_profile,
+                language=language,
+            )
 
-    narrative_data = ai_narrative.generate_narrative(analysis_flat, buyer_profile, language=language)
+            analysis_flat = {
+                "address":                  geo["display_name"],
+                "lat":                      lat,
+                "lng":                      lng,
+                "property":                 prop_data,
+                "safety":                   safety_data,
+                "airbnb_saturation":        airbnb_data,
+                "school_quality":           school_data,
+                "noise":                    noise_data,
+                "neighbourhood_trajectory": trajectory_data,
+                "valuation":                valuation_data,
+                "acquisition_costs":        acq_costs_data,
+                "seller_economics":         seller_econ_data,
+                "hidden_costs":             hidden_costs_data,
+                "parking":                  parking_data,
+                "score":                    score_data,
+                "disclosures":              disclosure_items,
+                "enriched_poi":             enriched_poi,
+                "poi_raw":                  poi_raw,
+            }
 
-    result = {
-        **analysis_flat,
-        "geo":              geo,
-        "district":         district,
-        "census_section":   census_section,
-        "negotiation_tips":  _generate_negotiation_tips(valuation_data, score_data, prop_data, language=language),
-        "narrative":         narrative_data,
-        "listing_price":     listing_price,
-        "comparables":       comparables_data,
-    }
-    if poi_raw.get("_unavailable"):
-        result["_degraded"] = True
-    return result
+            narrative_data = ai_narrative.generate_narrative(analysis_flat, buyer_profile, language=language)
+
+            result = {
+                **analysis_flat,
+                "geo":              geo,
+                "district":         district,
+                "census_section":   census_section,
+                "negotiation_tips":  _generate_negotiation_tips(valuation_data, score_data, prop_data, language=language),
+                "narrative":         narrative_data,
+                "listing_price":     listing_price,
+                "comparables":       comparables_data,
+            }
+            if poi_raw.get("_unavailable"):
+                result["_degraded"] = True
+            return result
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="Analysis timeout — one or more data sources did not respond in time.")
 
 
 # ─── endpoints ──────────────────────────────────────────────────────────────
