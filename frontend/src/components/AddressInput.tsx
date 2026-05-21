@@ -2,14 +2,18 @@ import { useState, useEffect, useRef } from 'react'
 import type { AnalyzeRequest, UserAnswers } from '../types/analysis'
 import BuyerQuestionnaire from './BuyerQuestionnaire'
 import { useLanguage } from '../contexts/LanguageContext'
+import { cityStrings } from '../i18n/strings'
+import type { City } from './CitySelector'
 
 interface Props {
   onSubmit: (req: AnalyzeRequest) => void
   loading: boolean
+  city: City
 }
 
-export default function AddressInput({ onSubmit, loading }: Props) {
-  const { t } = useLanguage()
+export default function AddressInput({ onSubmit, loading, city }: Props) {
+  const { t, lang } = useLanguage()
+  const cs = cityStrings[lang][city]
   const [address, setAddress] = useState('')
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [showSugg, setShowSugg] = useState(false)
@@ -27,12 +31,23 @@ export default function AddressInput({ onSubmit, loading }: Props) {
   const [showPropDetails, setShowPropDetails] = useState(false)
   const [userAnswers, setUserAnswers] = useState<UserAnswers>({})
 
+  // Reset address when city changes to prevent stale cross-city searches
+  useEffect(() => {
+    setAddress('')
+    setSuggestions([])
+    setShowSugg(false)
+  }, [city])
+
   useEffect(() => {
     if (address.length < 5) { setSuggestions([]); return }
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
+      // city is captured in this closure — included in deps to avoid stale city reference
       try {
-        const q = encodeURIComponent(address + (address.toLowerCase().includes('barcelona') ? '' : ', Barcelona'))
+        const cityName = city === 'madrid' ? 'Madrid' : 'Barcelona'
+        const q = encodeURIComponent(
+          address.toLowerCase().includes(cityName.toLowerCase()) ? address : `${address}, ${cityName}`
+        )
         const res = await fetch(
           `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=5&addressdetails=1&countrycodes=es`,
           { headers: { 'Accept-Language': 'en' } }
@@ -48,7 +63,8 @@ export default function AddressInput({ onSubmit, loading }: Props) {
         setShowSugg(names.length > 0)
       } catch { /* silent */ }
     }, 400)
-  }, [address])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [address, city])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -60,6 +76,7 @@ export default function AddressInput({ onSubmit, loading }: Props) {
     const hasAnswers    = Object.values(userAnswers).some(v => v !== undefined)
     onSubmit({
       address: address.trim(),
+      city,
       listing_price: !isNaN(parsedPrice) && parsedPrice > 0 ? parsedPrice : undefined,
       buyer_profile: profile,
       user_answers: hasAnswers ? userAnswers : undefined,
@@ -122,7 +139,7 @@ export default function AddressInput({ onSubmit, loading }: Props) {
           onChange={e => { setAddress(e.target.value); setShowSugg(true) }}
           onBlur={() => setTimeout(() => setShowSugg(false), 150)}
           onFocus={() => suggestions.length > 0 && setShowSugg(true)}
-          placeholder={t.form.addressPlaceholder}
+          placeholder={cs.form.addressPlaceholder}
           className={inputCls}
           style={{ borderColor: 'var(--border)', color: 'var(--text-main)' }}
           required
@@ -131,7 +148,7 @@ export default function AddressInput({ onSubmit, loading }: Props) {
         {/* Format hint — shown when user starts typing but no suggestions yet */}
         {address.length > 2 && address.length < 10 && suggestions.length === 0 && (
           <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-            {t.form.addressHint}
+            {cs.form.addressHint}
           </p>
         )}
         {showSugg && suggestions.length > 0 && (

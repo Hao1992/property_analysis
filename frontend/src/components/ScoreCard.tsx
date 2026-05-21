@@ -3,7 +3,9 @@ import type { CompositeScore, DimensionScore } from '../types/analysis'
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tooltip } from 'recharts'
 import { useLanguage } from '../contexts/LanguageContext'
 
-interface Props { score: CompositeScore }
+import type { City } from './CitySelector'
+
+interface Props { score: CompositeScore; city?: City }
 
 const SCORE_TEXT = (s: number) => s >= 75 ? 'text-emerald-600' : s >= 55 ? 'text-amber-600' : 'text-red-600'
 
@@ -58,7 +60,7 @@ function DimPanel({ d, onClose }: { d: DimensionScore; onClose: () => void }) {
   )
 }
 
-export default function ScoreCard({ score }: Props) {
+export default function ScoreCard({ score, city = 'barcelona' }: Props) {
   const { t } = useLanguage()
   const sc = t.sections.scoreCard
   const [openDim, setOpenDim] = useState<string | null>(null)
@@ -81,14 +83,17 @@ export default function ScoreCard({ score }: Props) {
             <span className="score-number text-6xl font-bold">{score.composite}</span>
             <span className="text-xl" style={{ color: 'var(--text-muted)' }}>/100</span>
           </div>
-          <div className="mt-3 flex items-center gap-2">
-            <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-stone-100">
-              <div className="h-full rounded-full" style={{ width: `${percentile}%`, backgroundColor: 'var(--accent)' }} />
+          {/* Percentile bar only shown for Barcelona (BCN calibrated distribution) */}
+          {city !== 'madrid' && (
+            <div className="mt-3 flex items-center gap-2">
+              <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-stone-100">
+                <div className="h-full rounded-full" style={{ width: `${percentile}%`, backgroundColor: 'var(--accent)' }} />
+              </div>
+              <span className="text-xs shrink-0" style={{ color: 'var(--text-muted)' }}>
+                {t.sections.score.better} <span className="font-semibold" style={{ color: 'var(--text-main)' }}>{percentile}</span>{t.sections.score.ofBCN}
+              </span>
             </div>
-            <span className="text-xs shrink-0" style={{ color: 'var(--text-muted)' }}>
-              {t.sections.score.better} <span className="font-semibold" style={{ color: 'var(--text-main)' }}>{percentile}</span>{t.sections.score.ofBCN}
-            </span>
-          </div>
+          )}
         </div>
 
         <div className="w-48 h-48">

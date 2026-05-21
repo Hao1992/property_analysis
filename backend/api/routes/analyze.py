@@ -68,7 +68,7 @@ def _format_poi_categories(enriched: dict) -> list[PoiCategory]:
     return result
 
 
-def _generate_negotiation_tips(val: dict, score: dict, prop: dict, language: str = "en") -> list[str]:
+def _generate_negotiation_tips(val: dict, score: dict, prop: dict, language: str = "en", city: str = "barcelona") -> list[str]:
     tips = []
     delta = val.get("vs_listing_pct") or 0
     zh = language == "zh"
@@ -94,13 +94,21 @@ def _generate_negotiation_tips(val: dict, score: dict, prop: dict, language: str
 
     year = prop.get("year_built")
     if year and 1960 <= year < 1975:
-        tips.append(
-            '楼房建于1960–1975年"发展年代"，是铝水泥（aluminosis）和石棉风险最高的建造时期，签订定金合同前务必要求专业结构检测报告。'
-            if zh else
-            "Building dates from the 1960–1975 'desarrollismo' era — highest risk period "
-            "for aluminosis (alumina cement) and asbestos. Request a specialist structural "
-            "survey before signing arras."
-        )
+        if city == "madrid":
+            tips.append(
+                '楼房建于1960–1975年。马德里地区铝水泥风险极低（干燥气候），但建议在签订定金合同前索取ITE报告，确认无结构性缺陷。'
+                if zh else
+                "Building dates from 1960–1975. Aluminosis risk is minimal in Madrid (dry climate), "
+                "but request the ITE inspection report before signing arras to confirm no structural issues."
+            )
+        else:
+            tips.append(
+                '楼房建于1960–1975年"发展年代"，是铝水泥（aluminosis）和石棉风险最高的建造时期，签订定金合同前务必要求专业结构检测报告。'
+                if zh else
+                "Building dates from the 1960–1975 'desarrollismo' era — highest risk period "
+                "for aluminosis (alumina cement) and asbestos. Request a specialist structural "
+                "survey before signing arras."
+            )
     elif year and (2026 - year) > 45 and prop.get("ite_status") != "FAVORABLE":
         tips.append(
             "楼龄超过45年，ITE（建筑技术检查）状态未经确认，签约前索取ITE报告，将不确定性作为议价依据。"
@@ -138,6 +146,7 @@ async def _run_full_analysis(
     has_parking_override: bool | None = None,
     has_terrace_override: bool | None = None,
     has_views_override: bool | None = None,
+    city: str = "barcelona",
 ) -> dict:
     """Core analysis pipeline — used by both /analyze and /compare."""
     from models.user_profile import UserAnswers
@@ -149,7 +158,7 @@ async def _run_full_analysis(
         raise HTTPException(status_code=422, detail=str(e))
 
     lat, lng = geo["lat"], geo["lng"]
-    district = open_data_bcn.get_district_from_address(geo["address"])
+    district = open_data_bcn.get_district_from_address(geo["address"], city=city)
 
     # Step 1: Parallel data fetch (all IO-bound tasks)
     (
@@ -158,25 +167,27 @@ async def _run_full_analysis(
     ) = await asyncio.gather(
         overpass.fetch_pois(lat, lng),
         catastro.get_property_data(lat, lng),
-        open_data_bcn.get_safety_data(lat, lng, district),
+        open_data_bcn.get_safety_data(lat, lng, district, city=city),
         ine.get_census_section_from_coords(lat, lng),
-        airbnb_saturation.get_airbnb_saturation(lat, lng, district),
-        neighbourhood_trajectory.get_neighbourhood_trajectory(lat, lng, district),
+        airbnb_saturation.get_airbnb_saturation(lat, lng, district, city=city),
+        neighbourhood_trajectory.get_neighbourhood_trajectory(lat, lng, district, city=city),
     )
 
-    # Step 1b: Market comparables (parallel, non-blocking — failure just omits the section)
-    try:
-        surface_for_comp = (
-            surface_m2_override
-            or (prop_data.get("surface_m2") if prop_data else None)
-        )
-        comparables_data = await fotocasa_scraper.get_market_comparables(
-            district=district,
-            surface_m2=surface_for_comp,
-            listing_price=listing_price,
-        )
-    except Exception:
-        comparables_data = None
+    # Step 1b: Market comparables — Barcelona only (Fotocasa scraper is BCN-specific)
+    comparables_data = None
+    if city == "barcelona":
+        try:
+            surface_for_comp = (
+                surface_m2_override
+                or (prop_data.get("surface_m2") if prop_data else None)
+            )
+            comparables_data = await fotocasa_scraper.get_market_comparables(
+                district=district,
+                surface_m2=surface_for_comp,
+                listing_price=listing_price,
+            )
+        except Exception:
+            comparables_data = None
 
     # Apply manual overrides when Catastro returns null
     overrides: dict = {}
@@ -222,7 +233,7 @@ async def _run_full_analysis(
         if parking_data["parking_needed"] and parking_data["recommended_monthly_eur"] is not None
         else None
     )
-    hidden_costs_data = estimate_hidden_costs(prop_data, listing_price, parking_monthly=_parking_m)
+    hidden_costs_data = estimate_hidden_costs(prop_data, listing_price, parking_monthly=_parking_m, city=city)
     school_data       = school_quality.get_school_quality(poi_raw, enriched_poi)
     noise_data        = noise_ecosystem.get_noise_ecosystem(poi_raw, prop_data)
 
@@ -237,20 +248,32 @@ async def _run_full_analysis(
         "well_above":    20,
     }.get(_comp_position) if _comp_position else None
 
-    market_data = {
-        "annual_growth_pct":      4.2,
-        "days_on_market":         55,
-        "vs_fair_value_pct":      valuation_data.get("vs_listing_pct", 0),
-        "comparables_position_score": _comp_position_score,
-        "rental_yield":           0.042,
-        "city_avg_yield":         0.045,
-    }
+    # City-specific market parameters (2024-2025 data)
+    if city == "madrid":
+        market_data = {
+            "annual_growth_pct":      9.5,   # Madrid YoY +11% average, conservative estimate
+            "days_on_market":         40,     # Madrid tighter than BCN
+            "vs_fair_value_pct":      valuation_data.get("vs_listing_pct", 0),
+            "comparables_position_score": _comp_position_score,
+            "rental_yield":           0.038,  # Madrid gross yield city average
+            "city_avg_yield":         0.040,
+        }
+    else:
+        market_data = {
+            "annual_growth_pct":      4.2,
+            "days_on_market":         55,
+            "vs_fair_value_pct":      valuation_data.get("vs_listing_pct", 0),
+            "comparables_position_score": _comp_position_score,
+            "rental_yield":           0.042,
+            "city_avg_yield":         0.045,
+        }
 
     # Transaction cost data (buyer + seller)
-    acq_costs_data    = calculate_acquisition_costs(listing_price) if listing_price else None
+    acq_costs_data    = calculate_acquisition_costs(listing_price, city=city) if listing_price else None
     seller_econ_data  = estimate_seller_economics(
         listing_price,
         cadastral_value=prop_data.get("cadastral_value"),
+        city=city,
     ) if listing_price else None
 
     score_data = engine.calculate_composite(
@@ -272,6 +295,8 @@ async def _run_full_analysis(
         listing_price=listing_price,
         buyer_profile=buyer_profile,
         language=language,
+        city=city,
+        user_answers=answers.model_dump() if answers else None,
     )
 
     analysis_flat = {
@@ -302,7 +327,7 @@ async def _run_full_analysis(
         "geo":              geo,
         "district":         district,
         "census_section":   census_section,
-        "negotiation_tips":  _generate_negotiation_tips(valuation_data, score_data, prop_data, language=language),
+        "negotiation_tips":  _generate_negotiation_tips(valuation_data, score_data, prop_data, language=language, city=city),
         "narrative":         narrative_data,
         "listing_price":     listing_price,
         "comparables":       comparables_data,
@@ -334,6 +359,7 @@ async def analyze(req: AnalyzeRequest, request: Request):
         has_parking_override=req.has_parking,
         has_terrace_override=req.has_terrace,
         has_views_override=req.has_views,
+        city=req.city,
     )
     duration_ms = round((time.time() - _t0) * 1000)
 
@@ -487,11 +513,14 @@ async def analyze(req: AnalyzeRequest, request: Request):
             negotiation_angle=narrative_data.get("negotiation_angle", ""),
             generated_by=narrative_data.get("generated_by", "claude-code-subscription"),
         ),
-        data_sources=[
-            "Nominatim", "Overpass API", "OSM Baseline Ratings",
-            "Catastro", "INE", "Open Data BCN",
-            "Inside Airbnb", "BCN Licences API", "Claude Code",
-        ],
+        data_sources=(
+            ["Nominatim", "Overpass API", "OSM Baseline Ratings",
+             "Catastro", "INE", "Inside Airbnb (Madrid)", "Claude Code"]
+            if city == "madrid" else
+            ["Nominatim", "Overpass API", "OSM Baseline Ratings",
+             "Catastro", "INE", "Open Data BCN",
+             "Inside Airbnb", "BCN Licences API", "Claude Code"]
+        ),
         analysis_cost_usd=0.0,
     )
 
@@ -506,7 +535,7 @@ async def compare(req: CompareRequest):
         prices += [None] * (len(req.addresses) - len(prices))
 
     analyses = await asyncio.gather(*[
-        _run_full_analysis(addr, price, req.buyer_profile, None)
+        _run_full_analysis(addr, price, req.buyer_profile, None, city=req.city)
         for addr, price in zip(req.addresses, prices)
     ])
 

@@ -15,12 +15,15 @@ import NoiseEcosystem from '../components/NoiseEcosystem'
 import NeighbourhoodTrajectory from '../components/NeighbourhoodTrajectory'
 import DisclosureSection from '../components/DisclosureSection'
 import CommuteAnalysis from '../components/CommuteAnalysis'
+import MadridITERiskFlag from '../components/MadridITERiskFlag'
+import MadridElevatorRisk from '../components/MadridElevatorRisk'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useReportAnalytics } from '../hooks/useAnalytics'
+import type { City } from '../components/CitySelector'
 
-interface Props { data: AnalyzeResponse }
+interface Props { data: AnalyzeResponse; city: City }
 
-export default function Report({ data }: Props) {
+export default function Report({ data, city }: Props) {
   const { t, lang } = useLanguage()
   const { trackPdf } = useReportAnalytics(data.request_id, lang)
 
@@ -90,7 +93,7 @@ export default function Report({ data }: Props) {
       {/* Score + map row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5" data-section="score">
         <div className="lg:col-span-2">
-          <ScoreCard score={data.score} />
+          <ScoreCard score={data.score} city={city} />
         </div>
         <PropertyMap lat={data.lat} lng={data.lng} address={data.address} poiCategories={data.poi_categories} />
       </div>
@@ -99,6 +102,24 @@ export default function Report({ data }: Props) {
       <div data-section="property">
         <PropertyDetails property={data.property} />
       </div>
+
+      {/* Madrid-specific building risk flags */}
+      {city === 'madrid' && data.property.year_built && data.property.year_built <= 1975 && (
+        <div data-section="madrid-ite">
+          <MadridITERiskFlag
+            yearBuilt={data.property.year_built}
+            iteStatus={data.property.ite_status}
+          />
+        </div>
+      )}
+      {city === 'madrid'
+        && data.property.year_built && data.property.year_built < 1975
+        && data.property.floor != null && data.property.floor >= 3
+        && data.property.has_lift === false && (
+        <div data-section="madrid-elevator">
+          <MadridElevatorRisk floor={data.property.floor} yearBuilt={data.property.year_built} />
+        </div>
+      )}
 
       {/* Valuation + Hidden costs */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5" data-section="valuation">
@@ -112,7 +133,7 @@ export default function Report({ data }: Props) {
             sellerEconomics={data.seller_economics}
           />
         )}
-        <HiddenCostBreakdown data={data.hidden_costs} />
+        <HiddenCostBreakdown data={data.hidden_costs} city={city} />
       </div>
 
       {/* Parking */}
@@ -129,8 +150,8 @@ export default function Report({ data }: Props) {
 
       {/* Safety + Airbnb */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5" data-section="safety">
-        <SafetyModule safety={data.safety} />
-        <AirbnbSaturation data={data.airbnb_saturation} />
+        <SafetyModule safety={data.safety} city={city} />
+        <AirbnbSaturation data={data.airbnb_saturation} city={city} />
       </div>
 
       {/* School + Noise — 2-col grid */}

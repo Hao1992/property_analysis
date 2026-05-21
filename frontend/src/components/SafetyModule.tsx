@@ -2,8 +2,9 @@ import type { SafetyData } from '../types/analysis'
 import SourceBadge from './SourceBadge'
 import ConfidenceBadge from './ConfidenceBadge'
 import { useLanguage } from '../contexts/LanguageContext'
+import type { City } from './CitySelector'
 
-interface Props { safety: SafetyData }
+interface Props { safety: SafetyData; city?: City }
 
 const barColor = (v: number) =>
   v >= 70 ? 'bg-green-500' : v >= 50 ? 'bg-amber-500' : 'bg-red-500'
@@ -15,7 +16,7 @@ const INDICES = [
   'night_safety_index',
 ] as const
 
-export default function SafetyModule({ safety }: Props) {
+export default function SafetyModule({ safety, city = 'barcelona' }: Props) {
   const { t } = useLanguage()
 
   const label = (v: number) =>
@@ -61,7 +62,10 @@ export default function SafetyModule({ safety }: Props) {
         {t.sections.safety.districtWarning}
       </div>
 
-      <SourceBadge sources={[{ label: 'Open Data Barcelona — Seguretat Ciutadana', url: 'https://opendata-ajuntament.barcelona.cat/data/ca/dataset/estadistica-de-seguretat-ciutadana', note: `${safety.data_year} data` }]} />
+      <SourceBadge sources={[city === 'madrid'
+        ? { label: 'Ayuntamiento Madrid — Seguridad Ciudadana', url: 'https://datos.madrid.es/portal/site/egob/menuitem.c05c1f754a33a9fbe4b2e4b284f1a5a0/?vgnextoid=baa555ce2d33f210VgnVCM2000001f4a900aRCRD', note: `${safety.data_year} data` }
+        : { label: 'Open Data Barcelona — Seguretat Ciutadana', url: 'https://opendata-ajuntament.barcelona.cat/data/ca/dataset/estadistica-de-seguretat-ciutadana', note: `${safety.data_year} data` }
+      ]} />
     </div>
   )
 }

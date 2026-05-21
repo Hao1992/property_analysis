@@ -259,6 +259,7 @@ export interface UserAnswers {
 
 export interface AnalyzeRequest {
   address: string;
+  city?: string;
   listing_price?: number;
   buyer_profile: 'balanced' | 'family' | 'investor' | 'retiree' | 'expat';
   user_answers?: UserAnswers;

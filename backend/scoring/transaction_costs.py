@@ -8,27 +8,38 @@ from __future__ import annotations
 from typing import Optional
 
 _CATALUNYA_ITP_RATE = 0.10
+_MADRID_ITP_RATE    = 0.06
 _IVA_RATE = 0.10
 _AJD_RATE_CATALUNYA = 0.015
+_AJD_RATE_MADRID    = 0.0075
 
 _LAND_FRACTION = 0.35
-_PLUSVALIA_BASE_COEFF_10YR = 0.17  # Barcelona objective method, ~10 years
-_PLUSVALIA_TAX_RATE = 0.28         # Barcelona tipo de gravamen
+_PLUSVALIA_BASE_COEFF_10YR = 0.17  # objective method, ~10 years
+_PLUSVALIA_TAX_RATE_BCN  = 0.28    # Barcelona tipo de gravamen
+_PLUSVALIA_TAX_RATE_MAD  = 0.29    # Madrid tipo de gravamen
 
 
 def calculate_acquisition_costs(
     listing_price: float,
     is_new_build: bool = False,
+    city: str = "barcelona",
+    buyer_type: str = "resident",
 ) -> dict:
-    """Return itemized acquisition costs for a buyer in Catalunya."""
+    """Return itemized acquisition costs for a buyer in the given city."""
+    is_madrid = city == "madrid"
+    itp_rate  = _MADRID_ITP_RATE if is_madrid else _CATALUNYA_ITP_RATE
+    ajd_rate  = _AJD_RATE_MADRID if is_madrid else _AJD_RATE_CATALUNYA
+    region_label = "Madrid" if is_madrid else "Catalunya"
+
     if is_new_build:
         transfer_tax = round(listing_price * _IVA_RATE)
-        ajd = round(listing_price * _AJD_RATE_CATALUNYA)
-        transfer_tax_label = "IVA (10%) + AJD (1.5%)"
+        ajd = round(listing_price * ajd_rate)
+        ajd_pct = int(ajd_rate * 100) if ajd_rate == int(ajd_rate) else ajd_rate * 100
+        transfer_tax_label = f"IVA (10%) + AJD ({ajd_rate*100:.2g}%)"
         transfer_total = transfer_tax + ajd
     else:
-        transfer_tax = round(listing_price * _CATALUNYA_ITP_RATE)
-        transfer_tax_label = "ITP (10%, Catalunya)"
+        transfer_tax = round(listing_price * itp_rate)
+        transfer_tax_label = f"ITP ({int(itp_rate*100)}%, {region_label})"
         transfer_total = transfer_tax
         ajd = 0
 
@@ -41,8 +52,9 @@ def calculate_acquisition_costs(
     total = round(listing_price + transfer_total + other_fees)
     overhead_pct = round((total - listing_price) / listing_price * 100, 1)
 
-    # Minimum savings: 20% down (bank finances up to 80%) + all purchase costs
-    min_down = round(listing_price * 0.20)
+    # Minimum savings: residents up to 80% LTV (20% down); non-residents max 60-70% LTV (30-40% down)
+    min_down_pct = 0.30 if buyer_type == "non_resident" else 0.20
+    min_down = round(listing_price * min_down_pct)
     min_savings = round(min_down + transfer_total + other_fees)
 
     return {
@@ -65,16 +77,19 @@ def estimate_seller_economics(
     listing_price: float,
     cadastral_value: Optional[float] = None,
     years_owned_est: int = 10,
+    city: str = "barcelona",
 ) -> dict:
     """Estimate seller's transaction costs to derive floor price and negotiation room."""
     agency_low  = round(listing_price * 0.03)
     agency_high = round(listing_price * 0.05)
 
+    tax_rate = _PLUSVALIA_TAX_RATE_MAD if city == "madrid" else _PLUSVALIA_TAX_RATE_BCN
+
     plusvalia_est: Optional[int] = None
     if cadastral_value and cadastral_value > 0:
         land_value = cadastral_value * _LAND_FRACTION
         coeff = min(_PLUSVALIA_BASE_COEFF_10YR * (years_owned_est / 10), 0.45)
-        plusvalia_est = round(land_value * coeff * _PLUSVALIA_TAX_RATE)
+        plusvalia_est = round(land_value * coeff * tax_rate)
 
     energy_cert_cost = 200  # mandatory, roughly €150–300
 

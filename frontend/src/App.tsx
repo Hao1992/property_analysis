@@ -6,6 +6,8 @@ import AddressInput from './components/AddressInput'
 import Report from './pages/Report'
 import Compare from './pages/Compare'
 import CostCalculator from './components/CostCalculator'
+import CitySelector, { type City } from './components/CitySelector'
+import { cityStrings } from './i18n/strings'
 
 type Tab = 'analyze' | 'compare'
 
@@ -16,8 +18,25 @@ export default function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
+  const [city, setCity]       = useState<City>(() => {
+    try {
+      const stored = localStorage.getItem('bp_city')
+      return (stored === 'barcelona' || stored === 'madrid') ? stored : 'barcelona'
+    } catch { return 'barcelona' }
+  })
+
+  const handleCityChange = (c: City) => {
+    setCity(c)
+    setResult(null)
+    setError(null)
+    try { localStorage.setItem('bp_city', c) } catch {}
+  }
+
+  // City-specific string overrides merged over base strings
+  const cs = cityStrings[lang][city]
 
   const handleAnalyze = async (req: AnalyzeRequest) => {
+    const submittedCity = city   // freeze city at submit time to avoid race condition
     setLoading(true)
     setError(null)
     setProgress(0)
@@ -27,7 +46,16 @@ export default function App() {
     try {
       const data = await analyzeProperty({ ...req, language: lang })
       setProgress(100)
-      setTimeout(() => { setResult(data); setProgress(0) }, 300)
+      // Only apply result if city hasn't changed since submission
+      setTimeout(() => {
+        setCity(prev => {
+          if (prev === submittedCity) {
+            setResult(data)
+          }
+          return prev
+        })
+        setProgress(0)
+      }, 300)
     } catch (e: unknown) {
       let msg: string = t.errors.generic
       if (e && typeof e === 'object' && 'response' in e) {
@@ -44,7 +72,7 @@ export default function App() {
     }
   }
 
-  const isRateLimit = error?.includes('5') || error?.includes('今天') || error?.includes('tomorrow')
+  const isRateLimit = error?.includes('Come back tomorrow') || error?.includes('明天') || error?.includes('5 free analyses')
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-page)' }}>
@@ -56,7 +84,7 @@ export default function App() {
             <div className="w-8 h-8 rounded-lg flex items-center justify-center font-display font-bold text-white text-sm" style={{ backgroundColor: 'var(--accent)' }}>B</div>
             <div>
               <h1 className="text-base font-semibold font-display" style={{ color: 'var(--text-main)' }}>Beyond Price</h1>
-              <p className="text-xs hidden sm:block" style={{ color: 'var(--text-muted)' }}>{t.nav.tagline}</p>
+              <p className="text-xs hidden sm:block" style={{ color: 'var(--text-muted)' }}>{cs.nav.tagline}</p>
             </div>
           </div>
 
@@ -115,19 +143,19 @@ export default function App() {
             {/* Hero */}
             <div className="text-center mb-10 pt-6">
               <p className="text-xs font-medium tracking-widest uppercase mb-4" style={{ color: 'var(--accent)' }}>
-                {t.hero.badge}
+                {cs.hero.badge}
               </p>
               <h2 className="font-display text-4xl sm:text-5xl font-bold mb-4 leading-tight" style={{ color: 'var(--text-main)' }}>
                 {t.hero.h1}<br />
                 <span className="italic" style={{ color: 'var(--accent)' }}>{t.hero.h2}</span>
               </h2>
               <p className="text-lg leading-relaxed mb-2" style={{ color: 'var(--text-sub)' }}>
-                {t.hero.sub}
+                {cs.hero.sub}
               </p>
               <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t.hero.tagline}</p>
 
               <div className="flex items-center justify-center gap-8 mt-8 mb-2">
-                {t.hero.stats.map(({ n, label }) => (
+                {cs.hero.stats.map(({ n, label }) => (
                   <div key={label} className="text-center">
                     <p className="font-display text-2xl font-bold" style={{ color: 'var(--accent)' }}>{n}</p>
                     <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{label}</p>
@@ -136,7 +164,9 @@ export default function App() {
               </div>
             </div>
 
-            <AddressInput onSubmit={handleAnalyze} loading={loading} />
+            <CitySelector city={city} onChange={handleCityChange} />
+
+            <AddressInput onSubmit={handleAnalyze} loading={loading} city={city} />
 
             {loading && (
               <div className="mt-6 card p-5 text-center space-y-2">
@@ -144,7 +174,7 @@ export default function App() {
                   <div className="w-4 h-4 rounded-full animate-pulse" style={{ backgroundColor: 'var(--accent)' }} />
                   <p className="font-medium" style={{ color: 'var(--text-main)' }}>{t.loading.title}</p>
                 </div>
-                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t.loading.sub}</p>
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{cs.loading.sub}</p>
                 <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t.loading.time}</p>
               </div>
             )}
@@ -162,26 +192,26 @@ export default function App() {
             )}
 
             <p className="text-center text-xs mt-6" style={{ color: 'var(--text-muted)' }}>
-              {t.hero.limit}
+              {cs.hero.limit}
             </p>
 
             {/* Cost calculator — standalone, always visible on home */}
             {!result && !loading && (
               <div className="mt-8">
-                <CostCalculator />
+                <CostCalculator defaultRegion={city === 'madrid' ? 'madrid' : 'catalonia'} />
               </div>
             )}
           </div>
         )}
 
-        {tab === 'analyze' && result && <Report data={result} />}
+        {tab === 'analyze' && result && <Report data={result} city={city} />}
       </main>
 
       {!result && tab === 'analyze' && (
         <footer className="border-t mt-16 py-8 print:hidden" style={{ borderColor: 'var(--border)' }}>
           <div className="max-w-5xl mx-auto px-6 text-center">
-            <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>{t.footer.brand}</p>
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t.footer.data}</p>
+            <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>{cs.footer.brand}</p>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{cs.footer.data}</p>
             <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{t.footer.disclaimer}</p>
           </div>
         </footer>

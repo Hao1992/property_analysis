@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface CostLine {
@@ -38,13 +38,23 @@ function fmt(n: number) {
   return '€' + Math.round(n).toLocaleString('es-ES');
 }
 
-export default function CostCalculator() {
+interface Props {
+  defaultRegion?: string;
+}
+
+export default function CostCalculator({ defaultRegion = 'catalonia' }: Props) {
   const { t, lang } = useLanguage();
   const calc = t.costCalc;
   const isZh = lang === 'zh';
 
   const [price, setPrice] = useState('');
-  const [region, setRegion] = useState('catalonia');
+  const [region, setRegion] = useState(defaultRegion);
+
+  // Sync region when parent city changes (e.g., city switcher toggled)
+  useEffect(() => {
+    setRegion(defaultRegion);
+    setResult(null);
+  }, [defaultRegion]);
   const [buyerType, setBuyerType] = useState('resident');
   const [isNewBuild, setIsNewBuild] = useState(false);
   const [mortgage, setMortgage] = useState('');

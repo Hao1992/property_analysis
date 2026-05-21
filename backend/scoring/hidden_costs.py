@@ -9,7 +9,7 @@ cert letter (graduated scale) rather than a binary upgrade-required flag.
 from __future__ import annotations
 
 
-def estimate_hidden_costs(prop: dict, listing_price: float | None = None, parking_monthly: int | None = None) -> dict:
+def estimate_hidden_costs(prop: dict, listing_price: float | None = None, parking_monthly: int | None = None, city: str = "barcelona") -> dict:
     surface    = prop.get("surface_m2") or 80
     year_built = prop.get("year_built")
     age        = (2026 - year_built) if year_built else None
@@ -18,9 +18,13 @@ def estimate_hidden_costs(prop: dict, listing_price: float | None = None, parkin
     has_lift   = prop.get("has_lift", False)
     ite_status = prop.get("ite_status", "UNKNOWN")
 
-    # IBI (municipal property tax) — BCN average rate ~0.75 % of cadastral value
-    cadastral  = prop.get("cadastral_value") or (listing_price * 0.5 if listing_price else surface * 1_800)
-    ibi_annual = round(cadastral * 0.0075)
+    # IBI (municipal property tax)
+    # BCN rate ~0.75%, Madrid capital rate ~0.456% (Ordenanza Fiscal 2024)
+    ibi_rate = 0.00456 if city == "madrid" else 0.0075
+    # Madrid cadastral values are lower (1990-era), use 0.20 ratio vs BCN 0.50
+    cadastral_ratio = 0.20 if city == "madrid" else 0.50
+    cadastral  = prop.get("cadastral_value") or (listing_price * cadastral_ratio if listing_price else surface * 1_800)
+    ibi_annual = round(cadastral * ibi_rate)
 
     # Community fee: older buildings with lifts cost more to maintain
     age_known = age is not None

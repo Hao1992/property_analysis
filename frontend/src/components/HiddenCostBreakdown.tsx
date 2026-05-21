@@ -1,8 +1,9 @@
 import { HiddenCostsData } from '../types/analysis';
 import SourceBadge from './SourceBadge';
 import { useLanguage } from '../contexts/LanguageContext';
+import type { City } from './CitySelector';
 
-interface Props { data: HiddenCostsData; }
+interface Props { data: HiddenCostsData; city?: City }
 
 function Row({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
@@ -16,7 +17,7 @@ function Row({ label, value, sub }: { label: string; value: string; sub?: string
   );
 }
 
-export default function HiddenCostBreakdown({ data }: Props) {
+export default function HiddenCostBreakdown({ data, city = 'barcelona' }: Props) {
   const { t } = useLanguage()
   const costs = t.sections.costs
   const fmt = (n: number) => `€${n.toLocaleString('es-ES')}`;
@@ -74,7 +75,9 @@ export default function HiddenCostBreakdown({ data }: Props) {
 
       <SourceBadge className="mt-2" sources={[
         { label: 'Catastro', url: 'https://www.catastro.meh.es/', note: 'IBI = cadastral × 0.75%' },
-        { label: 'BCN Open Data', url: 'https://opendata-ajuntament.barcelona.cat/', note: 'avg community fee by building age' },
+        city === 'madrid'
+          ? { label: 'Ayuntamiento de Madrid', url: 'https://datos.madrid.es/', note: 'avg community fee by building age' }
+          : { label: 'BCN Open Data', url: 'https://opendata-ajuntament.barcelona.cat/', note: 'avg community fee by building age' },
       ]} />
     </div>
   );

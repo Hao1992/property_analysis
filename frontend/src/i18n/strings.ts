@@ -915,3 +915,103 @@ const strings = {
 
 export type Strings = typeof strings['en']
 export default strings
+
+// City-specific string overrides — merged over the base strings per city
+export const cityStrings = {
+  en: {
+    barcelona: {
+      nav:    { tagline: 'Barcelona · Know before you buy' },
+      hero:   {
+        badge: 'Barcelona · Free Beta',
+        sub:   'Enter any Barcelona address. Get the full picture — hidden costs, structural risks, noise, Airbnb pressure, fair value — in 60 seconds.',
+        limit: '5 free analyses per day · No account required · Barcelona addresses only',
+        stats: [
+          { n: '8',    label: 'Data sources' },
+          { n: '12+',  label: 'Risk factors' },
+          { n: '60s',  label: 'Per report' },
+          { n: '100%', label: 'Free to try' },
+        ],
+      },
+      loading: { sub: 'Checking Catastro, Airbnb data, OSM, safety indices, school quality…' },
+      footer:  {
+        brand: 'Beyond Price — Barcelona Property Intelligence',
+        data:  'Data: Catastro · INE · OpenStreetMap · Inside Airbnb · Open Data BCN · AI: Claude',
+      },
+      form: {
+        addressPlaceholder: 'e.g. Carrer de Mallorca 401, Barcelona',
+        addressHint: 'Use Spanish street format: Carrer/Calle + street name + number + city. Select a suggestion for best accuracy.',
+      },
+    },
+    madrid: {
+      nav:    { tagline: 'Madrid · Know before you buy' },
+      hero:   {
+        badge: 'Madrid · Free Beta',
+        sub:   'Enter any Madrid address. Get the full picture — ITP savings vs Barcelona, Plan RESIDE licence status, ITE building risks, fair value — in 60 seconds.',
+        limit: '5 free analyses per day · No account required · Madrid addresses only',
+        stats: [
+          { n: '9',    label: 'Data sources' },
+          { n: '14+',  label: 'Risk factors' },
+          { n: '60s',  label: 'Per report' },
+          { n: '€12K', label: 'ITP saving vs BCN' },
+        ],
+      },
+      loading: { sub: 'Checking Catastro, Plan RESIDE registry, Ayuntamiento Madrid, OSM, safety indices…' },
+      footer:  {
+        brand: 'Beyond Price — Madrid Property Intelligence',
+        data:  'Data: Catastro · INE · OpenStreetMap · Inside Airbnb · Ayuntamiento de Madrid · AI: Claude',
+      },
+      form: {
+        addressPlaceholder: 'e.g. Calle de Serrano 47, Madrid',
+        addressHint: 'Use Spanish street format: Calle/Paseo/Avenida + street name + number + city. Select a suggestion for best accuracy.',
+      },
+    },
+  },
+  zh: {
+    barcelona: {
+      nav:    { tagline: '巴塞罗那 · 买前知真相' },
+      hero:   {
+        badge: '巴塞罗那 · 免费公测',
+        sub:   '输入任意巴塞罗那地址，60秒获取完整报告——隐性成本、结构风险、噪音、Airbnb饱和度、公允价值，一目了然。',
+        limit: '每天5次免费分析 · 无需注册账号 · 仅限巴塞罗那地址',
+        stats: [
+          { n: '8',    label: '数据来源' },
+          { n: '12+',  label: '风险维度' },
+          { n: '60秒', label: '生成时间' },
+          { n: '100%', label: '免费使用' },
+        ],
+      },
+      loading: { sub: '正在查询地籍局、Airbnb数据、OpenStreetMap、治安指数、学校质量……' },
+      footer:  {
+        brand: 'Beyond Price — 巴塞罗那房产情报',
+        data:  '数据来源：地籍局 · INE · OpenStreetMap · Inside Airbnb · 巴塞罗那开放数据 · AI：Claude',
+      },
+      form: {
+        addressPlaceholder: '例如：Carrer de Mallorca 401, Barcelona',
+        addressHint: '请使用西班牙街道格式：Carrer/Calle + 街道名 + 门牌号 + 城市名。选择下拉建议可提高精确度。',
+      },
+    },
+    madrid: {
+      nav:    { tagline: '马德里 · 买前知真相' },
+      hero:   {
+        badge: '马德里 · 免费公测',
+        sub:   '输入任意马德里地址，60秒获取完整报告——对比巴塞罗那的税费节省、Plan RESIDE短租牌照合规状态、ITE建筑风险、公允价值，一目了然。',
+        limit: '每天5次免费分析 · 无需注册账号 · 仅限马德里地址',
+        stats: [
+          { n: '9',      label: '数据来源' },
+          { n: '14+',    label: '风险维度' },
+          { n: '60秒',   label: '生成时间' },
+          { n: '€1.2万', label: '对比巴塞罗那税费节省' },
+        ],
+      },
+      loading: { sub: '正在查询地籍局、Plan RESIDE登记、马德里市政开放数据、OpenStreetMap、治安指数……' },
+      footer:  {
+        brand: 'Beyond Price — 马德里房产情报',
+        data:  '数据来源：地籍局 · INE · OpenStreetMap · Inside Airbnb · 马德里市政府 · AI：Claude',
+      },
+      form: {
+        addressPlaceholder: '例如：Calle de Serrano 47, Madrid',
+        addressHint: '请使用西班牙街道格式：Calle/Paseo/Avenida + 街道名 + 门牌号 + 城市名。选择下拉建议可提高精确度。',
+      },
+    },
+  },
+}

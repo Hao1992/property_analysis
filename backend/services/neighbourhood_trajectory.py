@@ -28,7 +28,42 @@ _DISTRICT_TREND_FALLBACK = {
 }
 
 
-async def get_neighbourhood_trajectory(lat: float, lng: float, district: str) -> dict:
+# Madrid district trajectory (based on 2024-2025 market data)
+_MADRID_DISTRICT_TREND = {
+    "Centro":              {"trend": "stable",   "score": 55, "new_biz": 60},
+    "Salamanca":           {"trend": "rising",   "score": 72, "new_biz": 45},
+    "Chamberí":            {"trend": "rising",   "score": 70, "new_biz": 50},
+    "Chamartín":           {"trend": "rising",   "score": 68, "new_biz": 48},
+    "Retiro":              {"trend": "rising",   "score": 67, "new_biz": 42},
+    "Tetuán":              {"trend": "rising",   "score": 63, "new_biz": 55},
+    "Arganzuela":          {"trend": "rising",   "score": 62, "new_biz": 52},
+    "Carabanchel":         {"trend": "rising",   "score": 65, "new_biz": 60},
+    "Puente de Vallecas":  {"trend": "rising",   "score": 68, "new_biz": 70},
+    "Villa de Vallecas":   {"trend": "rising",   "score": 65, "new_biz": 65},
+    "Usera":               {"trend": "stable",   "score": 58, "new_biz": 40},
+    "Latina":              {"trend": "stable",   "score": 56, "new_biz": 38},
+    "Villaverde":          {"trend": "stable",   "score": 52, "new_biz": 30},
+    "Hortaleza":           {"trend": "rising",   "score": 62, "new_biz": 45},
+    "Moncloa-Aravaca":     {"trend": "stable",   "score": 60, "new_biz": 38},
+    "Fuencarral-El Pardo": {"trend": "stable",   "score": 58, "new_biz": 35},
+    "Ciudad Lineal":       {"trend": "stable",   "score": 57, "new_biz": 38},
+    "Moratalaz":           {"trend": "stable",   "score": 55, "new_biz": 32},
+    "Vicálvaro":           {"trend": "stable",   "score": 54, "new_biz": 30},
+    "San Blas-Canillejas": {"trend": "stable",   "score": 55, "new_biz": 33},
+    "Barajas":             {"trend": "stable",   "score": 57, "new_biz": 35},
+}
+
+
+async def get_neighbourhood_trajectory(lat: float, lng: float, district: str, city: str = "barcelona") -> dict:
+    if city == "madrid":
+        fallback = _MADRID_DISTRICT_TREND.get(district, {"trend": "stable", "score": 58, "new_biz": 40})
+        return {
+            "trend": fallback["trend"],
+            "new_businesses_12m": fallback["new_biz"],
+            "renovation_permits_12m": 0,
+            "trend_score": float(fallback["score"]),
+        }
+
     fallback = _DISTRICT_TREND_FALLBACK.get(district, {"trend": "stable", "score": 52, "new_biz": 30})
 
     try:

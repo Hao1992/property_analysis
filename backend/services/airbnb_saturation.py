@@ -15,15 +15,28 @@ from pathlib import Path
 
 import httpx
 
-INSIDE_AIRBNB_URL = (
+INSIDE_AIRBNB_URL_BCN = (
     "http://data.insideairbnb.com/spain/catalonia/barcelona/"
     "2024-09-15/data/listings.csv.gz"
 )
-_CACHE_PATH = Path.home() / ".cache" / "property_analyzer" / "airbnb_bcn.csv"
-_LISTINGS: list[dict] | None = None
+INSIDE_AIRBNB_URL_MAD = (
+    "http://data.insideairbnb.com/spain/comunidad-de-madrid/madrid/"
+    "2025-09-14/visualisations/listings.csv"
+)
 
-# District-level fallback (rough % of housing stock that is tourist apartments)
-_DISTRICT_FALLBACK = {
+# Legacy alias for backward compatibility
+INSIDE_AIRBNB_URL = INSIDE_AIRBNB_URL_BCN
+
+_CACHE_PATH_BCN = Path.home() / ".cache" / "property_analyzer" / "airbnb_bcn.csv"
+_CACHE_PATH_MAD = Path.home() / ".cache" / "property_analyzer" / "airbnb_mad.csv"
+# Legacy alias
+_CACHE_PATH = _CACHE_PATH_BCN
+
+_LISTINGS_BCN: list[dict] | None = None
+_LISTINGS_MAD: list[dict] | None = None
+
+# District-level fallback — Barcelona
+_DISTRICT_FALLBACK_BCN = {
     "Ciutat Vella":         {"risk": "very_high", "count_500m": 180},
     "Eixample":             {"risk": "high",      "count_500m": 95},
     "Sants-Montjuïc":       {"risk": "medium",    "count_500m": 45},
@@ -34,6 +47,33 @@ _DISTRICT_FALLBACK = {
     "Nou Barris":           {"risk": "low",        "count_500m": 12},
     "Sant Andreu":          {"risk": "low",        "count_500m": 15},
     "Sant Martí":           {"risk": "medium",     "count_500m": 40},
+}
+# Legacy alias
+_DISTRICT_FALLBACK = _DISTRICT_FALLBACK_BCN
+
+# District-level fallback — Madrid (based on Sep 2025 Inside Airbnb + Plan RESIDE impact)
+_DISTRICT_FALLBACK_MAD = {
+    "Centro":              {"risk": "very_high", "count_500m": 210},
+    "Arganzuela":          {"risk": "medium",    "count_500m": 55},
+    "Retiro":              {"risk": "medium",    "count_500m": 40},
+    "Salamanca":           {"risk": "high",      "count_500m": 90},
+    "Chamartín":           {"risk": "medium",    "count_500m": 35},
+    "Tetuán":              {"risk": "medium",    "count_500m": 45},
+    "Chamberí":            {"risk": "high",      "count_500m": 70},
+    "Fuencarral-El Pardo": {"risk": "low",       "count_500m": 15},
+    "Moncloa-Aravaca":     {"risk": "low",       "count_500m": 20},
+    "Latina":              {"risk": "low",        "count_500m": 18},
+    "Carabanchel":         {"risk": "low",        "count_500m": 12},
+    "Usera":               {"risk": "low",        "count_500m": 15},
+    "Puente de Vallecas":  {"risk": "low",        "count_500m": 10},
+    "Moratalaz":           {"risk": "low",        "count_500m": 8},
+    "Ciudad Lineal":       {"risk": "low",        "count_500m": 12},
+    "Hortaleza":           {"risk": "low",        "count_500m": 10},
+    "Villaverde":          {"risk": "low",        "count_500m": 5},
+    "Villa de Vallecas":   {"risk": "low",        "count_500m": 8},
+    "Vicálvaro":           {"risk": "low",        "count_500m": 6},
+    "San Blas-Canillejas": {"risk": "low",        "count_500m": 8},
+    "Barajas":             {"risk": "low",        "count_500m": 5},
 }
 
 
@@ -46,26 +86,39 @@ def _haversine(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
-async def _ensure_listings() -> list[dict]:
-    global _LISTINGS
-    if _LISTINGS is not None:
-        return _LISTINGS
+async def _ensure_listings(city: str = "barcelona") -> list[dict]:
+    global _LISTINGS_BCN, _LISTINGS_MAD
+    is_madrid = city == "madrid"
+    listings_ref = _LISTINGS_MAD if is_madrid else _LISTINGS_BCN
+    cache_path = _CACHE_PATH_MAD if is_madrid else _CACHE_PATH_BCN
+    url = INSIDE_AIRBNB_URL_MAD if is_madrid else INSIDE_AIRBNB_URL_BCN
 
-    if _CACHE_PATH.exists():
-        _LISTINGS = _load_csv(_CACHE_PATH.read_bytes())
-        return _LISTINGS
+    if listings_ref is not None:
+        return listings_ref
+
+    if cache_path.exists():
+        data = _load_csv(cache_path.read_bytes())
+        if is_madrid:
+            _LISTINGS_MAD = data
+        else:
+            _LISTINGS_BCN = data
+        return data
 
     try:
         async with httpx.AsyncClient(timeout=60) as client:
-            r = await client.get(INSIDE_AIRBNB_URL)
+            r = await client.get(url)
         r.raise_for_status()
-        _CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
-        _CACHE_PATH.write_bytes(r.content)
-        _LISTINGS = _load_csv(r.content)
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        cache_path.write_bytes(r.content)
+        data = _load_csv(r.content)
     except Exception:
-        _LISTINGS = []
+        data = []
 
-    return _LISTINGS
+    if is_madrid:
+        _LISTINGS_MAD = data
+    else:
+        _LISTINGS_BCN = data
+    return data
 
 
 def _load_csv(data: bytes) -> list[dict]:
@@ -86,14 +139,15 @@ def _load_csv(data: bytes) -> list[dict]:
     return rows
 
 
-async def get_airbnb_saturation(lat: float, lng: float, district: str = "Eixample") -> dict:
-    listings = await _ensure_listings()
+async def get_airbnb_saturation(lat: float, lng: float, district: str = "Eixample", city: str = "barcelona") -> dict:
+    listings = await _ensure_listings(city=city)
+    fallback_map = _DISTRICT_FALLBACK_MAD if city == "madrid" else _DISTRICT_FALLBACK_BCN
 
     if not listings:
         # InsideAirbnb CSV unavailable. Use district-level risk label only.
         # We intentionally do NOT show specific counts (100m / 500m) because the
         # district-level numbers are averages and would be misleading for a specific address.
-        fallback = _DISTRICT_FALLBACK.get(district, {"risk": "medium"})
+        fallback = fallback_map.get(district, {"risk": "medium"})
         return {
             "tourist_pct_building": None,
             "tourist_count_500m": None,   # not available — district fallback only

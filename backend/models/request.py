@@ -1,11 +1,22 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional
 
 from models.user_profile import UserAnswers
 
+_SUPPORTED_CITIES = {"barcelona", "madrid"}
+
 
 class AnalyzeRequest(BaseModel):
     address: str
+    city: str = "barcelona"               # "barcelona" | "madrid"
+
+    @field_validator("city")
+    @classmethod
+    def normalize_city(cls, v: str) -> str:
+        normalized = v.lower().strip()
+        if normalized not in _SUPPORTED_CITIES:
+            raise ValueError(f"Unsupported city '{v}'. Supported: {sorted(_SUPPORTED_CITIES)}")
+        return normalized
     listing_price: Optional[float] = None
     # Legacy profile string (kept for /compare backward compat)
     buyer_profile: str = "balanced"
@@ -28,3 +39,12 @@ class CompareRequest(BaseModel):
     addresses: list[str]
     listing_prices: Optional[list[float]] = None
     buyer_profile: str = "balanced"
+    city: str = "barcelona"               # "barcelona" | "madrid"
+
+    @field_validator("city")
+    @classmethod
+    def normalize_city_compare(cls, v: str) -> str:
+        normalized = v.lower().strip()
+        if normalized not in _SUPPORTED_CITIES:
+            raise ValueError(f"Unsupported city '{v}'.")
+        return normalized
