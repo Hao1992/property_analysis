@@ -15,9 +15,10 @@ _OVERPASS_ENDPOINTS = [
 
 _HEADERS = {"User-Agent": "PropertyAnalyzer/2.0 (contact: dev@propertyanalyzer.es)"}
 
-# Hard cap: total time we'll spend on Overpass across all attempts.
-# Must keep the full analysis well under Railway's connection timeout.
-_OVERPASS_PER_REQUEST_TIMEOUT = int(os.getenv("OVERPASS_TIMEOUT", "8"))
+# Per-request timeout: 6s per attempt × 2 methods (GET/POST) × 3 endpoints = 36s max,
+# but fast-fail endpoints (connection refused) exit in <1s so realistic worst case
+# is ~16-20s, keeping total analysis within asyncio.timeout(25).
+_OVERPASS_PER_REQUEST_TIMEOUT = int(os.getenv("OVERPASS_TIMEOUT", "6"))
 
 
 async def _overpass_request(query: str, timeout: int | None = None) -> list[dict]:
