@@ -54,23 +54,28 @@ def _plusvalia_coeff(years: int) -> float:
 
 def _catalunya_itp_progressive(price: float) -> tuple[float, str]:
     """
-    DL 5/2025 Catalunya progressive ITP brackets (resale):
-      ≤ €200,000:  10%
-      €200,001 – €600,000:  11%
-      > €600,000:  12%
+    DL 5/2025 Catalunya progressive ITP brackets (resale), per atc.gencat.cat:
+      ≤ €600,000:               10%  (flat)
+      €600,001 – €900,000:      11%
+      €900,001 – €1,500,000:    12%
+      > €1,500,000:             13%
     Returns (tax_amount, label).
     """
-    if price <= 200_000:
+    if price <= 600_000:
         tax = price * 0.10
         label = "ITP (10%, Catalunya)"
-    elif price <= 600_000:
-        tax = 200_000 * 0.10 + (price - 200_000) * 0.11
+    elif price <= 900_000:
+        tax = 600_000 * 0.10 + (price - 600_000) * 0.11
         eff = round(tax / price * 100, 1)
         label = f"ITP (10–11%, Catalunya, efectivo {eff}%)"
-    else:
-        tax = 200_000 * 0.10 + 400_000 * 0.11 + (price - 600_000) * 0.12
+    elif price <= 1_500_000:
+        tax = 600_000 * 0.10 + 300_000 * 0.11 + (price - 900_000) * 0.12
         eff = round(tax / price * 100, 1)
         label = f"ITP (10–12%, Catalunya, efectivo {eff}%)"
+    else:
+        tax = 600_000 * 0.10 + 300_000 * 0.11 + 600_000 * 0.12 + (price - 1_500_000) * 0.13
+        eff = round(tax / price * 100, 1)
+        label = f"ITP (10–13%, Catalunya, efectivo {eff}%)"
     return round(tax), label
 
 

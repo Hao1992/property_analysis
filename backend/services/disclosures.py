@@ -122,7 +122,7 @@ def _translate_zh(
     _catastro_itp_rate = 0.06 if is_madrid else 0.10
     catastro_extra_tax = int(catastro_gap * _catastro_itp_rate) if catastro_gap else None
     _city_ratio_zh = "40–55%" if is_madrid else "25–40%"
-    _itp_label_zh2 = f"{'马德里ITP税率6%' if is_madrid else '加泰罗尼亚ITP税率10%'}"
+    _itp_label_zh2 = f"{'马德里ITP税率6%' if is_madrid else '加泰罗尼亚ITP累进税率（10–13%）'}"
     catastro_tax_detail = (
         f"该房产的Catastro参考价估算约为 €{ref_estimate:,}（估算值，该地区地籍估值通常为市场价的{_city_ratio_zh}），"
         + (f"高于挂牌价 €{int(listing_price):,} 约 €{catastro_gap:,}。" if catastro_gap and listing_price else "")
@@ -884,7 +884,14 @@ def _catastro_tax_trap(
     city_label = "Madrid" if is_madrid else "Barcelona"
 
     # City-specific ITP rate for extra-tax calculation
-    itp_rate = 0.06 if is_madrid else 0.10
+    # BCN: use effective rate on reference_estimate (most BCN under €600k → 10%)
+    if is_madrid:
+        itp_rate = 0.06
+    else:
+        from scoring.transaction_costs import _catalunya_itp_progressive
+        _ref_est_preview = cadastral_value / cadastral_ratio
+        _ref_itp, _ = _catalunya_itp_progressive(_ref_est_preview)
+        itp_rate = round(_ref_itp / _ref_est_preview, 3) if _ref_est_preview > 0 else 0.10
 
     reference_estimate = cadastral_value / cadastral_ratio
     if listing_price >= reference_estimate * 0.95:
