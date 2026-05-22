@@ -245,6 +245,7 @@ class AnalyzeResponse(BaseModel):
     listing_price: Optional[float] = None
     geocode_confidence: str = "high"       # high | low
     geocode_warning: Optional[str] = None  # shown in UI when confidence is low
+    city: Optional[str] = None             # "barcelona" | "madrid" | None
     property: PropertyData
     disclosures: list[DisclosureItem] = []
     poi_categories: list[PoiCategory]

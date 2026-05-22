@@ -244,6 +244,7 @@ export interface AnalyzeResponse {
   listing_price?: number;
   geocode_confidence: 'high' | 'low';
   geocode_warning?: string;
+  city?: 'barcelona' | 'madrid' | null;
   property: PropertyData;
   disclosures: DisclosureItem[];
   poi_categories: PoiCategory[];

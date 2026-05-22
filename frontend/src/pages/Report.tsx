@@ -2,6 +2,8 @@ import type { AnalyzeResponse } from '../types/analysis'
 import ScoreCard from '../components/ScoreCard'
 import NeighborhoodModule from '../components/NeighborhoodModule'
 import SafetyModule from '../components/SafetyModule'
+import MadridElevatorRisk from '../components/MadridElevatorRisk'
+import MadridITERiskFlag from '../components/MadridITERiskFlag'
 import ValuationModule from '../components/ValuationModule'
 import NegotiationTips from '../components/NegotiationTips'
 import PropertyMap from '../components/PropertyMap'
@@ -98,6 +100,19 @@ export default function Report({ data }: Props) {
       {/* Property details */}
       <div data-section="property">
         <PropertyDetails property={data.property} />
+        {/* Madrid-specific risk flags */}
+        {data.city === 'madrid' && data.property.year_built && data.property.ite_status && (
+          <div className="mt-3">
+            <MadridITERiskFlag yearBuilt={data.property.year_built} iteStatus={data.property.ite_status} />
+          </div>
+        )}
+        {data.city === 'madrid' && !data.property.has_lift &&
+          data.property.floor != null && data.property.floor > 0 &&
+          data.property.year_built && data.property.year_built < 1990 && (
+          <div className="mt-3">
+            <MadridElevatorRisk floor={data.property.floor} yearBuilt={data.property.year_built} />
+          </div>
+        )}
       </div>
 
       {/* Valuation + Hidden costs */}

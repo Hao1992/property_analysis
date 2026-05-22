@@ -482,6 +482,7 @@ async def analyze(req: AnalyzeRequest, request: Request):
         listing_price=req.listing_price,
         geocode_confidence=geo.get("geocode_confidence", "high"),
         geocode_warning=geo.get("geocode_warning") or data.get("_unsupported_city_warning"),
+        city=data.get("city"),
         property=prop_response,
         disclosures=[DisclosureItem(**d) for d in data.get("disclosures", [])],
         poi_categories=_format_poi_categories(data["enriched_poi"]),
