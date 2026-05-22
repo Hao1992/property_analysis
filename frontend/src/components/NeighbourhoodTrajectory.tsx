@@ -75,7 +75,13 @@ export default function NeighbourhoodTrajectory({ data }: Props) {
         </div>
       </div>
 
-      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{traj.note}</p>
+      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+        {isMadridDistrict
+          ? (lang === 'zh'
+              ? '基于马德里城市发展规划（PEIN 2024）及房地产市场报告，为区级估算'
+              : 'District-level estimate based on Madrid urban development plan (PEIN 2024) and real estate market reports')
+          : traj.note}
+      </p>
       {isMadridDistrict ? (
         <SourceBadge sources={[
           { label: 'Ayuntamiento de Madrid — PEIN 2024', url: 'https://datos.madrid.es', note: 'urban development plan + market reports' },
