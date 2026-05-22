@@ -24,10 +24,11 @@ const TYPE_HEADING: Record<string, string> = {
 }
 
 const LANG_LABEL: Record<string, string> = {
-  catalan: '🇪🇸 Catalan',
-  spanish: '🇪🇸 Spanish',
-  english: '🇬🇧 English',
-  mixed:   'Mixed',
+  catalan:   '🇪🇸 Catalan',
+  spanish:   '🇪🇸 Spanish',
+  english:   '🇬🇧 English',
+  bilingual: '🇪🇸 Bilingual',
+  mixed:     'Mixed',
 }
 
 function ScoreBar({ score }: { score: number }) {
@@ -56,7 +57,7 @@ function SchoolCard({ school, isNearest }: { school: SchoolEntry; isNearest: boo
             <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${typeConf.bg} ${typeConf.border} ${typeConf.color}`}>
               {typeLabel}
             </span>
-            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{LANG_LABEL[school.language] ?? school.language}</span>
+            {school.language && <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{LANG_LABEL[school.language] ?? school.language}</span>}
             {isNearest && <span className="text-xs font-medium" style={{ color: 'var(--accent)' }}>· {t.sections.schools.nearest}</span>}
           </div>
         </div>
