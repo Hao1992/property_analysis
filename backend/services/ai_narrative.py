@@ -222,6 +222,15 @@ def _build_analysis_context(data: dict) -> str:
             "energy_upgrade_required": hidden.get("energy_upgrade_required"),
             "energy_upgrade_est_eur": hidden.get("energy_upgrade_estimate_eur"),
         },
+        # City context so Claude gives city-appropriate advice
+        "city": data.get("city"),   # "barcelona" | "madrid" | None
+        "city_context": (
+            "Barcelona: rent control (zona tensionada), 2028 Airbnb ban, ITP 10% (flat ≤€600k)"
+            if data.get("city") == "barcelona" else
+            "Madrid: no rent control, higher rental yields (avg 4.8%), ITP 6% flat, faster market"
+            if data.get("city") == "madrid" else
+            "Spain (city not confirmed)"
+        ),
     }
     return json.dumps(ctx, ensure_ascii=False, indent=2)
 
