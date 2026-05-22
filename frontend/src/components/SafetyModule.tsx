@@ -23,8 +23,12 @@ export default function SafetyModule({ safety }: Props) {
 
   const hasData = safety.theft_rate_index != null
 
-  // Detect city from source metadata (falls back to BCN sources if not set)
-  const isMadrid = (safety as any)._source?.includes('Madrid') ?? false
+  // Detect city from district name — Madrid districts are Spanish-named, BCN are Catalan
+  const MADRID_DISTRICTS = new Set(['Centro','Salamanca','Retiro','Chamberí','Chamartín',
+    'Tetuán','Moncloa-Aravaca','Arganzuela','Fuencarral-El Pardo','Latina','Carabanchel',
+    'Usera','Puente de Vallecas','Moratalaz','Ciudad Lineal','Hortaleza',
+    'Vicálvaro','San Blas-Canillejas','Barajas','Villaverde'])
+  const isMadrid = safety.district != null && MADRID_DISTRICTS.has(safety.district)
 
   if (!hasData) {
     return (
