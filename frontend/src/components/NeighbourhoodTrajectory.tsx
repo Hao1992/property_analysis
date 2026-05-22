@@ -42,6 +42,10 @@ export default function NeighbourhoodTrajectory({ data }: Props) {
   const trendData = traj.trends[trend] ?? traj.trends.stable
   const trendStyle = TREND_STYLE[trend] ?? TREND_STYLE.stable
 
+  // Detect Madrid from district-level absence of BCN renovation_permits (BCN always provides them)
+  // Madrid trajectory data has renovation_permits_12m = null
+  const isMadridDistrict = data.renovation_permits_12m == null && data.new_businesses_12m != null
+
   return (
     <div className="card p-5 space-y-4">
       <div className="flex items-start justify-between">
@@ -49,7 +53,7 @@ export default function NeighbourhoodTrajectory({ data }: Props) {
           <p className="text-xs font-medium uppercase tracking-widest mb-1" style={{ color: 'var(--accent)' }}>{traj.label}</p>
           <h3 className="font-semibold" style={{ color: 'var(--text-main)' }}>{traj.title}</h3>
         </div>
-        <ConfidenceBadge level="verified" />
+        <ConfidenceBadge level={isMadridDistrict ? "estimated" : "verified"} />
       </div>
 
       <div className={`flex items-center gap-3 rounded-xl px-4 py-3 border ${trendStyle.bg}`}>
@@ -72,10 +76,16 @@ export default function NeighbourhoodTrajectory({ data }: Props) {
       </div>
 
       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{traj.note}</p>
-      <SourceBadge sources={[
-        { label: 'BCN Activitats Comercials', url: 'https://opendata-ajuntament.barcelona.cat/data/ca/dataset/activitats-comercials-icub', note: 'business licence registry' },
-        { label: "BCN Llicències d'Obres", url: 'https://opendata-ajuntament.barcelona.cat/data/ca/dataset/llicencies-obres-majors', note: 'major works permits' },
-      ]} />
+      {isMadridDistrict ? (
+        <SourceBadge sources={[
+          { label: 'Ayuntamiento de Madrid — PEIN 2024', url: 'https://datos.madrid.es', note: 'urban development plan + market reports' },
+        ]} />
+      ) : (
+        <SourceBadge sources={[
+          { label: 'BCN Activitats Comercials', url: 'https://opendata-ajuntament.barcelona.cat/data/ca/dataset/activitats-comercials-icub', note: 'business licence registry' },
+          { label: "BCN Llicències d'Obres", url: 'https://opendata-ajuntament.barcelona.cat/data/ca/dataset/llicencies-obres-majors', note: 'major works permits' },
+        ]} />
+      )}
     </div>
   );
 }
