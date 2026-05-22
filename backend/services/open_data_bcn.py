@@ -56,8 +56,19 @@ NEIGHBOURHOOD_TO_DISTRICT = {
 }
 
 
-async def get_safety_data(lat: float, lng: float, district: str) -> dict:
-    """Returns safety indices for the district. All values 0–100 (100 = safest)."""
+async def get_safety_data(lat: float, lng: float, district: str | None) -> dict:
+    """Returns safety indices for the district. All values 0–100 (100 = safest).
+    Returns None-filled dict when district is None (non-BCN cities)."""
+    if district is None:
+        return {
+            "theft_rate_index": None,
+            "vehicle_crime_index": None,
+            "vandalism_index": None,
+            "night_safety_index": None,
+            "district": None,
+            "data_year": None,
+            "_unavailable": True,
+        }
     data = DISTRICT_CRIME_INDEX.get(district, {
         "theft": 60, "vehicle": 65, "vandalism": 65, "night": 60
     })
@@ -71,8 +82,13 @@ async def get_safety_data(lat: float, lng: float, district: str) -> dict:
     }
 
 
-def get_district_from_address(address_components: dict) -> str:
-    """Extract Barcelona district from Nominatim address components."""
+def get_district_from_address(address_components: dict, city: str | None = None) -> str | None:
+    """Extract Barcelona district from Nominatim address components.
+    Returns None for non-Barcelona cities — do NOT default to Eixample cross-city."""
+    # Only try BCN district mapping for Barcelona
+    if city and city != "barcelona":
+        return None
+
     fields_to_check = [
         address_components.get("city_district", ""),
         address_components.get("suburb", ""),
@@ -95,4 +111,8 @@ def get_district_from_address(address_components: dict) -> str:
             if neighbourhood in field_lower:
                 return district
 
-    return "Eixample"  # Default fallback
+    # For Barcelona, keep "Eixample" as fallback within the city.
+    # For unknown city, return None.
+    if city == "barcelona":
+        return "Eixample"
+    return None

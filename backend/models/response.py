@@ -22,12 +22,12 @@ class PoiCategory(BaseModel):
 
 
 class SafetyData(BaseModel):
-    theft_rate_index: float
-    vehicle_crime_index: float
-    vandalism_index: float
-    night_safety_index: float
-    district: str
-    data_year: int
+    theft_rate_index: Optional[float] = None
+    vehicle_crime_index: Optional[float] = None
+    vandalism_index: Optional[float] = None
+    night_safety_index: Optional[float] = None
+    district: Optional[str] = None
+    data_year: Optional[int] = None
 
 
 class PropertyData(BaseModel):
@@ -73,7 +73,7 @@ class SchoolEntry(BaseModel):
     name: str
     distance_m: float
     school_type: str                           # public | concertada | private
-    language: str                              # catalan | spanish | english
+    language: Optional[str] = None             # catalan | spanish | english | bilingual
     google_rating: Optional[float] = None
     composite_score: float
 
@@ -193,8 +193,8 @@ class MarketComparables(BaseModel):
     listings: list[ComparableListing] = []
     count: Optional[int] = None
     source: str                         # "Fotocasa" | "district statistics"
-    district: str
-    size_range: str
+    district: Optional[str] = None
+    size_range: Optional[str] = None
     asking_ppm2: Optional[int] = None
     position: Optional[str] = None     # well_below | below | within_range | above | well_above
 

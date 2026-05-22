@@ -27,10 +27,13 @@ def _score_school(raw: dict, enriched_list: list[dict]) -> dict:
         "concertada" if operator_type in ("concertada", "religious") else
         "public"
     )
+    _lang_tag = tags.get("language", "")
     language = (
-        "english" if tags.get("language:en") == "yes" else
-        "spanish" if tags.get("language:es") == "yes" and tags.get("language:ca") != "yes" else
-        "catalan"
+        "english"  if tags.get("language:en") == "yes" else
+        "catalan"  if tags.get("language:ca") == "yes" or "ca" in _lang_tag else
+        "bilingual" if "ca;es" in _lang_tag or "es;ca" in _lang_tag else
+        "spanish"  if tags.get("language:es") == "yes" or "es" in _lang_tag else
+        None  # unknown — don't assume catalan for non-BCN schools
     )
 
     # Scoring

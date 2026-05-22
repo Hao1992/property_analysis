@@ -1,36 +1,104 @@
-"""Transaction cost calculations.
+"""Transaction cost calculations — city-aware.
 
 Two functions:
   calculate_acquisition_costs  — buyer's total cash needed
   estimate_seller_economics    — seller's costs → floor price / negotiation headroom
+
+Supported cities: "barcelona" (Catalunya ITP), "madrid" (Madrid ITP)
+Default (None) falls back to Catalunya rates for backward compat.
 """
 from __future__ import annotations
 from typing import Optional
 
-_CATALUNYA_ITP_RATE = 0.10
 _IVA_RATE = 0.10
-_AJD_RATE_CATALUNYA = 0.015
 
-_LAND_FRACTION = 0.35
-_PLUSVALIA_BASE_COEFF_10YR = 0.17  # Barcelona objective method, ~10 years
-_PLUSVALIA_TAX_RATE = 0.28         # Barcelona tipo de gravamen
+# AJD (Actos Jurídicos Documentados) for new builds only
+_AJD_RATES = {
+    "barcelona": 0.015,   # Catalunya: 1.5%
+    "madrid":    0.0075,  # Comunidad de Madrid: 0.75%
+}
+
+# IBI municipal property tax rates (% of cadastral value, annual)
+IBI_RATES = {
+    "barcelona": 0.0066,  # Barcelona municipality (Ajuntament 2024)
+    "madrid":    0.00456, # Madrid municipality (Ayuntamiento 2024)
+}
+IBI_RATE_DEFAULT = 0.0066  # fall back to Barcelona if city unknown
+
+# Plusvalía: land fraction for urban flats (suelo % of cadastral), BCN tipo de gravamen
+_LAND_FRACTION = 0.65        # urban BCN/MAD: ~65% of cadastral is land value
+_PLUSVALIA_TAX_RATES = {
+    "barcelona": 0.30,   # BCN tipo de gravamen (2024)
+    "madrid":    0.29,   # Madrid tipo de gravamen (2024)
+}
+_PLUSVALIA_TAX_RATE_DEFAULT = 0.30
+
+# RDL 26/2021 objective method coefficients by years_owned
+# Official table: years 1→20 (beyond 20 capped at 0.45)
+_PLUSVALIA_COEFFS = {
+    1: 0.14, 2: 0.13, 3: 0.12, 4: 0.12, 5: 0.11,
+    6: 0.11, 7: 0.10, 8: 0.10, 9: 0.09, 10: 0.08,
+    11: 0.08, 12: 0.08, 13: 0.08, 14: 0.08, 15: 0.08,
+    16: 0.08, 17: 0.08, 18: 0.08, 19: 0.07, 20: 0.07,
+}
+
+
+def _plusvalia_coeff(years: int) -> float:
+    """Return RDL 26/2021 objective method coefficient for given years of ownership."""
+    if years <= 0:
+        return 0.14
+    if years >= 20:
+        return 0.45
+    return _PLUSVALIA_COEFFS.get(years, 0.08)
+
+
+def _catalunya_itp_progressive(price: float) -> tuple[float, str]:
+    """
+    DL 5/2025 Catalunya progressive ITP brackets (resale):
+      ≤ €200,000:  10%
+      €200,001 – €600,000:  11%
+      > €600,000:  12%
+    Returns (tax_amount, label).
+    """
+    if price <= 200_000:
+        tax = price * 0.10
+        label = "ITP (10%, Catalunya)"
+    elif price <= 600_000:
+        tax = 200_000 * 0.10 + (price - 200_000) * 0.11
+        eff = round(tax / price * 100, 1)
+        label = f"ITP (10–11%, Catalunya, efectivo {eff}%)"
+    else:
+        tax = 200_000 * 0.10 + 400_000 * 0.11 + (price - 600_000) * 0.12
+        eff = round(tax / price * 100, 1)
+        label = f"ITP (10–12%, Catalunya, efectivo {eff}%)"
+    return round(tax), label
 
 
 def calculate_acquisition_costs(
     listing_price: float,
     is_new_build: bool = False,
+    city: str | None = None,
 ) -> dict:
-    """Return itemized acquisition costs for a buyer in Catalunya."""
+    """Return itemized acquisition costs for a buyer. city: 'barcelona' | 'madrid' | None."""
+    city_key = (city or "barcelona").lower()
+
     if is_new_build:
         transfer_tax = round(listing_price * _IVA_RATE)
-        ajd = round(listing_price * _AJD_RATE_CATALUNYA)
-        transfer_tax_label = "IVA (10%) + AJD (1.5%)"
+        ajd_rate = _AJD_RATES.get(city_key, _AJD_RATES["barcelona"])
+        ajd = round(listing_price * ajd_rate)
+        ajd_pct = round(ajd_rate * 100, 2)
+        transfer_tax_label = f"IVA (10%) + AJD ({ajd_pct}%, {city_key.capitalize()})"
         transfer_total = transfer_tax + ajd
     else:
-        transfer_tax = round(listing_price * _CATALUNYA_ITP_RATE)
-        transfer_tax_label = "ITP (10%, Catalunya)"
-        transfer_total = transfer_tax
         ajd = 0
+        if city_key == "madrid":
+            transfer_tax = round(listing_price * 0.06)
+            transfer_tax_label = "ITP (6%, Comunidad de Madrid)"
+            transfer_total = transfer_tax
+        else:
+            # Catalunya progressive
+            transfer_tax, transfer_tax_label = _catalunya_itp_progressive(listing_price)
+            transfer_total = transfer_tax
 
     # Notary + registry + gestoría: rough scale based on transaction amount
     notary_est = min(2500, max(700, round(listing_price * 0.0015 + 600)))
@@ -50,6 +118,7 @@ def calculate_acquisition_costs(
         "is_new_build":       is_new_build,
         "transfer_tax":       transfer_total,
         "transfer_tax_label": transfer_tax_label,
+        "ajd":                ajd,
         "notary_est":         notary_est,
         "registry_est":       registry_est,
         "gestoria_est":       gestoria_est,
@@ -65,16 +134,19 @@ def estimate_seller_economics(
     listing_price: float,
     cadastral_value: Optional[float] = None,
     years_owned_est: int = 10,
+    city: str | None = None,
 ) -> dict:
     """Estimate seller's transaction costs to derive floor price and negotiation room."""
+    city_key = (city or "barcelona").lower()
     agency_low  = round(listing_price * 0.03)
     agency_high = round(listing_price * 0.05)
 
     plusvalia_est: Optional[int] = None
     if cadastral_value and cadastral_value > 0:
         land_value = cadastral_value * _LAND_FRACTION
-        coeff = min(_PLUSVALIA_BASE_COEFF_10YR * (years_owned_est / 10), 0.45)
-        plusvalia_est = round(land_value * coeff * _PLUSVALIA_TAX_RATE)
+        coeff = _plusvalia_coeff(years_owned_est)
+        tax_rate = _PLUSVALIA_TAX_RATES.get(city_key, _PLUSVALIA_TAX_RATE_DEFAULT)
+        plusvalia_est = round(land_value * coeff * tax_rate)
 
     energy_cert_cost = 200  # mandatory, roughly €150–300
 

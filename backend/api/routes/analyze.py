@@ -149,7 +149,54 @@ async def _run_full_analysis(
         raise HTTPException(status_code=422, detail=str(e))
 
     lat, lng = geo["lat"], geo["lng"]
-    district = open_data_bcn.get_district_from_address(geo["address"])
+    city = geo.get("city")  # "barcelona" | "madrid" | None
+    country_code = geo.get("country_code", "")
+
+    # Reject non-Spain addresses early
+    if country_code and country_code != "es":
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Address appears to be outside Spain (country: {country_code.upper()}). "
+                "This tool covers properties in Barcelona and Madrid only."
+            )
+        )
+
+    # Warn (but continue) for Spanish cities outside supported coverage
+    _unsupported_city_warning: str | None = None
+    if city is None and country_code == "es":
+        _unsupported_city_warning = (
+            "This address is outside Barcelona and Madrid. "
+            "Analysis is provided on a best-effort basis — "
+            "safety data, parking, and some financial figures are calibrated for BCN/Madrid only."
+        )
+
+    district = open_data_bcn.get_district_from_address(geo["address"], city=city)
+
+    # For Madrid: extract district name from Nominatim address components for INE price lookup
+    if city == "madrid" and district is None:
+        _mad_district_raw = (
+            geo["address"].get("city_district", "")
+            or geo["address"].get("suburb", "")
+        )
+        # Map common Nominatim suburb values to official Madrid distritos
+        _MAD_SUBURB_TO_DISTRICT = {
+            "salamanca": "Salamanca", "recoletos": "Salamanca", "castellana": "Salamanca",
+            "goya": "Salamanca", "lista": "Salamanca",
+            "retiro": "Retiro", "ibiza": "Retiro", "jerónimos": "Retiro",
+            "chamberí": "Chamberí", "arapiles": "Chamberí", "almagro": "Chamberí",
+            "trafalgar": "Chamberí", "ríos rosas": "Chamberí", "vallehermoso": "Chamberí",
+            "centro": "Centro", "malasaña": "Centro", "chueca": "Centro",
+            "palacio": "Centro", "embajadores": "Centro", "justicia": "Centro",
+            "lavapiés": "Centro", "latina": "Latina", "paloma": "Latina",
+            "carabanchel": "Carabanchel", "opañel": "Carabanchel",
+            "tetuán": "Tetuán", "cuatro caminos": "Tetuán", "bellas vistas": "Tetuán",
+            "arganzuela": "Arganzuela", "acacias": "Arganzuela",
+            "vallecas": "Puente de Vallecas", "puente de vallecas": "Puente de Vallecas",
+            "chamartín": "Chamartín", "ciudad lineal": "Ciudad Lineal",
+            "hortaleza": "Hortaleza", "fuencarral": "Fuencarral-El Pardo",
+        }
+        district = _MAD_SUBURB_TO_DISTRICT.get(_mad_district_raw.lower())
 
     # Step 1: Parallel data fetch (all IO-bound tasks)
     (
@@ -209,11 +256,12 @@ async def _run_full_analysis(
             district=district,
             has_private_parking=bool(prop_data.get("has_parking")),
             has_car=bool(answers.has_car) if answers else False,
+            city=city,
         ),
     )
 
     # Step 3: INE price data
-    median_ppm2 = await ine.get_median_price_ppm2(census_section or "", district)
+    median_ppm2 = await ine.get_median_price_ppm2(census_section or "", district, city=city)
 
     # Step 4: Synchronous derivations (no IO)
     valuation_data    = valuation.estimate_fair_value(median_ppm2, prop_data, listing_price)
@@ -223,7 +271,7 @@ async def _run_full_analysis(
         if parking_data["parking_needed"] and _recommended_parking_m is not None and _recommended_parking_m > 0
         else None
     )
-    hidden_costs_data = estimate_hidden_costs(prop_data, listing_price, parking_monthly=_parking_m)
+    hidden_costs_data = estimate_hidden_costs(prop_data, listing_price, parking_monthly=_parking_m, city=city)
     school_data       = school_quality.get_school_quality(poi_raw, enriched_poi)
     noise_data        = noise_ecosystem.get_noise_ecosystem(poi_raw, prop_data)
 
@@ -247,11 +295,12 @@ async def _run_full_analysis(
         "city_avg_yield":         0.045,
     }
 
-    # Transaction cost data (buyer + seller)
-    acq_costs_data    = calculate_acquisition_costs(listing_price) if listing_price else None
+    # Transaction cost data (buyer + seller) — city-aware
+    acq_costs_data    = calculate_acquisition_costs(listing_price, city=city) if listing_price else None
     seller_econ_data  = estimate_seller_economics(
         listing_price,
         cadastral_value=prop_data.get("cadastral_value"),
+        city=city,
     ) if listing_price else None
 
     score_data = engine.calculate_composite(
@@ -274,6 +323,7 @@ async def _run_full_analysis(
         buyer_profile=buyer_profile,
         user_answers=answers,
         language=language,
+        city=city,
     )
 
     analysis_flat = {
@@ -295,6 +345,7 @@ async def _run_full_analysis(
         "disclosures":              disclosure_items,
         "enriched_poi":             enriched_poi,
         "poi_raw":                  poi_raw,
+        "city":                     city,
     }
 
     narrative_data = ai_narrative.generate_narrative(analysis_flat, buyer_profile, language=language)
@@ -311,6 +362,8 @@ async def _run_full_analysis(
     }
     if poi_raw.get("_unavailable"):
         result["_degraded"] = True
+    if _unsupported_city_warning:
+        result["_unsupported_city_warning"] = _unsupported_city_warning
     return result
 
 
@@ -412,7 +465,7 @@ async def analyze(req: AnalyzeRequest, request: Request):
         lat=lat, lng=lng,
         listing_price=req.listing_price,
         geocode_confidence=geo.get("geocode_confidence", "high"),
-        geocode_warning=geo.get("geocode_warning"),
+        geocode_warning=geo.get("geocode_warning") or data.get("_unsupported_city_warning"),
         property=prop_response,
         disclosures=[DisclosureItem(**d) for d in data.get("disclosures", [])],
         poi_categories=_format_poi_categories(data["enriched_poi"]),
@@ -514,11 +567,14 @@ async def analyze(req: AnalyzeRequest, request: Request):
             negotiation_angle=narrative_data.get("negotiation_angle", ""),
             generated_by=narrative_data.get("generated_by", "claude-code-subscription"),
         ),
-        data_sources=[
-            "Nominatim", "Overpass API", "OSM Baseline Ratings",
-            "Catastro", "INE", "Open Data BCN",
-            "Inside Airbnb", "BCN Licences API", "Claude Code",
-        ],
+        data_sources=(
+            ["Nominatim", "Overpass API", "OSM Baseline Ratings",
+             "Catastro", "INE", "Open Data BCN",
+             "Inside Airbnb", "BCN Licences API", "Area Verda", "Claude Code"]
+            if data.get("city") == "barcelona" else
+            ["Nominatim", "Overpass API", "OSM Baseline Ratings",
+             "Catastro", "INE", "Inside Airbnb", "Claude Code"]
+        ),
         analysis_cost_usd=0.0,
     )
 

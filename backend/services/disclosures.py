@@ -22,12 +22,16 @@ def generate_disclosures(
     buyer_profile: str | None = None,
     user_answers=None,
     language: str = "en",
+    city: str | None = None,
 ) -> list[dict]:
     items: list[dict] = []
+    city_key = (city or "barcelona").lower()
+    is_barcelona = (city_key == "barcelona")
+    is_madrid    = (city_key == "madrid")
 
-    items += _transaction_costs(listing_price, prop_data)
+    items += _transaction_costs(listing_price, prop_data, city=city_key)
     items += _catastro_tax_trap(prop_data, listing_price)
-    items += _airbnb_situation(airbnb_data)
+    items += _airbnb_situation(airbnb_data, city=city_key)
     items += _building_era(prop_data)
     items += _community_debt(hidden_costs_data, prop_data)
     items += _ite_status(prop_data)
@@ -35,9 +39,16 @@ def generate_disclosures(
     items += _noise_reality(noise_data)
     items += _neighbourhood_trajectory(trajectory_data)
     items += _cedula_habitabilidad(prop_data)
-    items += _plusvalia_nonresident(prop_data, listing_price)
+    items += _plusvalia_nonresident(prop_data, listing_price, city=city_key)
     items += _irnr_withholding_buyer(listing_price)
-    items += _rent_control_barcelona(user_answers)
+    items += _energy_cert_upgrade(prop_data, hidden_costs_data)
+
+    # City-specific disclosures
+    if is_barcelona:
+        items += _rent_control_barcelona(user_answers)
+        items += _bcn_zona_tensionada_info()
+    if is_madrid:
+        items += _madrid_itp_no_rent_control(user_answers)
 
     # Sort: red first, then yellow, then green/info
     _ORDER = {"red": 0, "yellow": 1, "green": 2, "info": 3}
@@ -45,7 +56,7 @@ def generate_disclosures(
 
     if language == "zh":
         items = _translate_zh(items, prop_data, airbnb_data, noise_data,
-                              hidden_costs_data, listing_price, user_answers)
+                              hidden_costs_data, listing_price, user_answers, city=city_key)
     return items
 
 
@@ -57,6 +68,7 @@ def _translate_zh(
     hidden_costs_data: dict,
     listing_price: float | None,
     user_answers=None,
+    city: str = "barcelona",
 ) -> list[dict]:
     """Replace English disclosure text with Chinese equivalents."""
     year = prop_data.get("year_built")
@@ -72,7 +84,20 @@ def _translate_zh(
 
     cadastral = prop_data.get("cadastral_value")
     price = listing_price or (cadastral / 0.35 if cadastral else None)
-    itp = int(price * 0.10) if price else None
+    is_madrid = (city == "madrid")
+    # City-aware ITP rate
+    if is_madrid:
+        _itp_rate = 0.06
+        _itp_label_zh = "6% 产权转让税（ITP，马德里）"
+        _overhead_range_zh = "8–9%"
+    else:
+        # Catalunya progressive — use effective rate for display
+        from scoring.transaction_costs import _catalunya_itp_progressive
+        _itp_tax, _ = _catalunya_itp_progressive(price) if price else (None, None)
+        _itp_rate = (_itp_tax / price) if (price and _itp_tax) else 0.10
+        _itp_label_zh = f"{round(_itp_rate*100,1)}% 产权转让税（ITP，加泰罗尼亚累进税率）"
+        _overhead_range_zh = "12–14%"
+    itp = int(price * _itp_rate) if price else None
     notary = int(price * 0.015) if price else None
     lawyer = int(price * 0.01) if price else None
     total_low = itp + notary if (itp and notary) else None
@@ -81,8 +106,11 @@ def _translate_zh(
     # IRNR: imputed income = cadastral × 1.1%; tax = imputed income × 19% (EU residents) ≈ 0.2% cadastral
     annual_irnr = round(cadastral * 0.011 * 0.19) if cadastral else None
 
-    # Plusvalía estimate: land value (65% of cadastral) × coefficient 0.40 × 30% BCN rate
-    plusvalia_est = round(cadastral * 0.65 * 0.40 * 0.30) if cadastral else None
+    # Plusvalía: correct RDL 26/2021 coefficient (10yr hold = 0.08)
+    from scoring.transaction_costs import _plusvalia_coeff, _PLUSVALIA_TAX_RATES, _LAND_FRACTION as _LF
+    _pv_coeff = _plusvalia_coeff(10)
+    _pv_rate = _PLUSVALIA_TAX_RATES.get(city, 0.30)
+    plusvalia_est = round(cadastral * _LF * _pv_coeff * _pv_rate) if cadastral else None
     # 3% IRNR withholding: exactly 3% of total purchase price
     withholding = round(listing_price * 0.03) if listing_price else None
     rental_intent = getattr(user_answers, "rental_intent", None) if user_answers else None
@@ -117,15 +145,17 @@ def _translate_zh(
             "title": (
                 f"购房税费约 €{total_low:,}–€{total_high:,}，需额外准备"
                 if total_low and total_high
-                else "购房税费约为房价的12–14%，需额外准备"
+                else f"购房税费约为房价的{_overhead_range_zh}，需额外准备"
             ),
             "detail": (
-                f"在加泰罗尼亚购买二手房，买家须支付：10% 产权转让税（ITP）"
+                f"{'在马德里' if is_madrid else '在加泰罗尼亚'}购买二手房，买家须支付："
+                + _itp_label_zh
                 + (f"约 €{itp:,}" if itp else "")
                 + f"、公证及土地登记费约 1.5%"
                 + (f"（€{notary:,}）" if notary else "")
                 + "、律师费约 1%（建议聘请）。"
-                "大多数外籍买家低估了这部分费用，往往多付 €2–4万。"
+                + ("大多数外籍买家低估了这部分费用，往往多付 €1–2万。" if is_madrid
+                   else "大多数外籍买家低估了这部分费用，往往多付 €2–4万。")
             ),
             "action": "报价前确认总预算已包含这部分税费，而非事后补充。",
         },
@@ -136,14 +166,18 @@ def _translate_zh(
                 else (
                     "本楼未发现注册旅游公寓"
                     if pct == 0
-                    else f"100米内有 {count_100m} 套 Airbnb 房源"
+                    else (f"100米内有 {count_100m} 套 Airbnb 房源" if count_100m else f"旅游公寓密度：{risk}（区级估算）")
                 )
             ),
             "detail": (
                 f"500米范围内共有 {count_500m} 套旅游公寓。"
-                "巴塞罗那已通过法规，所有旅游公寓牌照须于2028年11月前归还。"
-                "在此之前：短租邻居频繁更换、楼宇损耗加速、业主大会决议难以形成多数。"
-                "2028年后：旅游公寓将全面停止，居住品质有望提升，但短租收益也将消失。"
+                + (
+                    "巴塞罗那已通过法规，所有旅游公寓牌照须于2028年11月前归还。"
+                    "在此之前：短租邻居频繁更换、楼宇损耗加速、业主大会决议难以形成多数。"
+                    "2028年后：旅游公寓将全面停止，居住品质有望提升，但短租收益也将消失。"
+                    if not is_madrid
+                    else "旅游公寓集中会影响居住品质：邻居频繁更换、楼宇损耗加速、社区管理难度增加。"
+                )
             ),
             "action": (
                 "签约前确认楼栋业主大会是否已通过禁止旅游出租的决议（楼规高于个人牌照）。"
@@ -406,26 +440,54 @@ def _translate_zh(
 
 # ─── individual generators ───────────────────────────────────────────────────
 
-def _transaction_costs(listing_price: float | None, prop_data: dict) -> list[dict]:
+def _transaction_costs(listing_price: float | None, prop_data: dict, city: str = "barcelona") -> list[dict]:
+    from scoring.transaction_costs import _catalunya_itp_progressive
     cadastral = prop_data.get("cadastral_value")
     price = listing_price or (cadastral / 0.35 if cadastral else None)
+    is_madrid = (city == "madrid")
+
     if not price:
+        if is_madrid:
+            return [{
+                "id": "transaction_costs",
+                "severity": "info",
+                "category": "costs",
+                "title": "Add ~8–9% on top of purchase price for transaction costs",
+                "detail": (
+                    "In the Comunidad de Madrid, resale property buyers pay: 6% transfer tax (ITP), "
+                    "~1.5% notary + Land Registry, ~1% lawyer. "
+                    "This surprises most non-Spanish buyers who expect 5%."
+                ),
+                "action": "Budget for total transaction cost before making an offer, not after.",
+            }]
         return [{
             "id": "transaction_costs",
             "severity": "info",
             "category": "costs",
             "title": "Add 12–14% on top of purchase price for transaction costs",
             "detail": (
-                "In Catalonia, resale property buyers pay: 10% transfer tax (ITP), "
+                "In Catalonia, resale property buyers pay: 10–12% transfer tax (ITP, progressive), "
                 "~1.5% notary + Land Registry, ~1% lawyer. "
                 "This surprises most non-Spanish buyers who expect 5–7%."
             ),
             "action": "Budget for total transaction cost before making an offer, not after.",
         }]
 
-    itp = price * 0.10
     notary_registry = price * 0.015
     lawyer = price * 0.01
+
+    if is_madrid:
+        itp = price * 0.06
+        itp_label = "6% ITP (Comunidad de Madrid)"
+        location_label = "Madrid"
+        overhead_note = "Most non-Spanish buyers underestimate this by €10,000–€20,000."
+    else:
+        itp, _ = _catalunya_itp_progressive(price)
+        itp_rate = round(itp / price * 100, 1)
+        itp_label = f"{itp_rate}% ITP (Catalunya, progressive 10–12%)"
+        location_label = "Catalonia"
+        overhead_note = "Most non-Spanish buyers underestimate this by €20,000–€40,000."
+
     total_low = itp + notary_registry
     total_high = itp + notary_registry + lawyer
     pct_low = round(total_low / price * 100, 1)
@@ -437,23 +499,29 @@ def _transaction_costs(listing_price: float | None, prop_data: dict) -> list[dic
         "category": "costs",
         "title": f"Transaction costs: ~€{int(total_low):,}–€{int(total_high):,} on top of asking price",
         "detail": (
-            f"For a €{int(price):,} resale property in Catalonia: "
-            f"10% ITP (€{int(itp):,}) + notary/registry (~€{int(notary_registry):,}) "
+            f"For a €{int(price):,} resale property in {location_label}: "
+            f"{itp_label} (€{int(itp):,}) + notary/registry (~€{int(notary_registry):,}) "
             f"+ optional but recommended lawyer (~€{int(lawyer):,}). "
             f"Total {pct_low}–{pct_high}% of purchase price. "
-            "Most non-Spanish buyers underestimate this by €20,000–€40,000."
+            f"{overhead_note}"
         ),
         "action": "Confirm your total budget covers purchase price + these costs before making an offer.",
     }]
 
 
-def _airbnb_situation(airbnb_data: dict) -> list[dict]:
+def _airbnb_situation(airbnb_data: dict, city: str = "barcelona") -> list[dict]:
     pct = airbnb_data.get("tourist_pct_building")
-    count_100m = airbnb_data.get("tourist_count_100m") or 0
-    count_500m = airbnb_data.get("tourist_count_500m") or 0
+    count_100m = airbnb_data.get("tourist_count_100m")
+    count_500m = airbnb_data.get("tourist_count_500m")
     risk = airbnb_data.get("risk_label") or "low"
 
     severity = "red" if risk in ("high", "very_high") else "yellow" if risk == "medium" else "green"
+    is_barcelona = (city == "barcelona")
+
+    # Don't show "0 listings" when counts are actually None (data unavailable)
+    counts_available = count_100m is not None or count_500m is not None
+    count_100m = count_100m or 0
+    count_500m = count_500m or 0
 
     if pct is not None:
         building_detail = (
@@ -461,22 +529,36 @@ def _airbnb_situation(airbnb_data: dict) -> list[dict]:
             if pct > 0
             else "No registered tourist apartments found in this building"
         )
-    else:
+    elif counts_available:
         building_detail = f"{count_100m} Airbnb listings within 100m"
+    else:
+        building_detail = f"Tourist apartment density: {risk.replace('_', ' ')} risk (district-level estimate)"
+
+    if is_barcelona:
+        ban_text = (
+            "Barcelona's Constitutional Court upheld a full ban on tourist apartment licenses — "
+            "all existing licenses must be relinquished by November 2028. "
+            "Until then: rotating short-term neighbors, increased building wear, and potential "
+            "community disputes. After 2028: this ends, which may improve residential quality "
+            "but eliminates any rental income potential from tourist lets."
+        )
+    else:
+        ban_text = (
+            "Tourist apartment concentration affects residential quality: "
+            "rotating neighbors, increased building wear, and potential community disputes."
+        )
+
+    if counts_available:
+        detail_prefix = f"{count_500m} total tourist apartments within 500m. "
+    else:
+        detail_prefix = f"District-level risk estimate: {risk.replace('_', ' ')}. "
 
     return [{
         "id": "airbnb_saturation",
         "severity": severity,
         "category": "neighborhood",
         "title": building_detail,
-        "detail": (
-            f"{count_500m} total tourist apartments within 500m. "
-            "Barcelona's Constitutional Court upheld a full ban on tourist apartment licenses — "
-            "all existing licenses must be relinquished by November 2028. "
-            "Until then: rotating short-term neighbors, increased building wear, and potential "
-            "community disputes. After 2028: this ends, which may improve residential quality "
-            "but eliminates any rental income potential from tourist lets."
-        ),
+        "detail": detail_prefix + ban_text,
         "action": (
             "Before signing: verify whether the building's community has already voted to "
             "prohibit tourist rentals (building rules override individual licenses)."
@@ -800,21 +882,40 @@ def _cedula_habitabilidad(prop_data: dict) -> list[dict]:
 def _plusvalia_nonresident(
     prop_data: dict,
     listing_price: float | None,
+    city: str = "barcelona",
 ) -> list[dict]:
     """Plusvalía Municipal — buyer is primary taxpayer when seller is non-resident.
 
-    Legal basis: Art. 106.2 RDL 2/2004 (TRLRHL). Barcelona rate: 30%.
-    Deadline: 30 working days after deed. File: Modelo 081, ORGT Barcelona.
+    Legal basis: Art. 106.2 RDL 2/2004 (TRLRHL).
+    Coefficient per RDL 26/2021 objective method (10-year hold default: 0.08).
+    Barcelona rate: 30% | Madrid rate: 29%.
     """
+    from scoring.transaction_costs import _plusvalia_coeff, _PLUSVALIA_TAX_RATES, _LAND_FRACTION
     cadastral = prop_data.get("cadastral_value")
+    is_barcelona = (city == "barcelona")
+    is_madrid = (city == "madrid")
+
+    tax_rate = _PLUSVALIA_TAX_RATES.get(city, 0.30)
+    years_est = 10  # default estimate
+    coeff = _plusvalia_coeff(years_est)
+
+    if is_barcelona:
+        filing_info = "Deadline: 30 working days from deed (Modelo 081, ORGT Barcelona — ajuntament.barcelona.cat/orgt)."
+        municipality = "Barcelona"
+        rate_pct = "30%"
+    elif is_madrid:
+        filing_info = "Deadline: 30 working days from deed (Modelo 081, Ayuntamiento de Madrid — sede.madrid.es)."
+        municipality = "Madrid"
+        rate_pct = "29%"
+    else:
+        filing_info = "Deadline: 30 working days from deed. File at the local Ayuntamiento."
+        municipality = "the municipality"
+        rate_pct = f"{round(tax_rate*100)}%"
 
     if cadastral:
-        # Urban Barcelona: land component is ~65% of cadastral value.
-        # Coefficient 0.40 is a conservative mid-range estimate for 15–20 year holding.
-        # Actual coefficient varies 0.14–0.45 depending on holding period (RDL 26/2021 tables).
-        land_value = cadastral * 0.65
-        taxable_base = land_value * 0.40
-        plusvalia_est = round(taxable_base * 0.30)  # Barcelona rate: 30%
+        land_value = cadastral * _LAND_FRACTION
+        taxable_base = land_value * coeff
+        plusvalia_est = round(taxable_base * tax_rate)
         return [{
             "id": "plusvalia_nonresident_seller",
             "severity": "red",
@@ -823,17 +924,17 @@ def _plusvalia_nonresident(
             "detail": (
                 "Art. 106.2 RDL 2/2004 (TRLRHL): when the seller is not a Spanish tax resident, "
                 "the buyer becomes the substitute taxpayer (sujeto pasivo sustituto) for Plusvalía Municipal (IIVTNU). "
-                "This is primary liability — Barcelona municipality pursues you directly without first going after the seller. "
-                f"Estimate based on cadastral value (€{int(cadastral):,}): "
-                f"land component (~65%) × holding coefficient (~0.40) × 30% (Barcelona rate) ≈ €{plusvalia_est:,}. "
-                "Actual amount depends on the seller's acquisition date and the coefficient for that holding period. "
-                "Deadline: 30 working days from deed (Modelo 081, ORGT Barcelona)."
+                f"This is primary liability — {municipality} pursues you directly without first going after the seller. "
+                f"Estimate: cadastral (€{int(cadastral):,}) × land fraction ({round(_LAND_FRACTION*100)}%) "
+                f"× RDL 26/2021 coefficient ({coeff}, ~{years_est}yr hold) × {rate_pct} ({municipality} rate) ≈ €{plusvalia_est:,}. "
+                "Actual amount depends on the seller's acquisition date. "
+                + filing_info
             ),
             "action": (
                 "Before signing: (1) Request the seller's Certificado de residencia fiscal en España from AEAT — "
                 "only this certificate confirms Spanish tax residency; a Spanish address alone is not sufficient. "
                 f"(2) If unconfirmed, negotiate a price retention of ~€{plusvalia_est:,} from the purchase price. "
-                "(3) File and pay Modelo 081 within 30 working days at ajuntament.barcelona.cat/orgt."
+                "(3) File and pay Modelo 081 within 30 working days."
             ),
         }]
     return [{
@@ -842,15 +943,16 @@ def _plusvalia_nonresident(
         "category": "legal",
         "title": "If seller is non-resident: you are the primary taxpayer for Plusvalía Municipal",
         "detail": (
-            "Art. 106.2 RDL 2/2004: when the seller is not a Spanish tax resident, the buyer becomes "
+            f"Art. 106.2 RDL 2/2004: when the seller is not a Spanish tax resident, the buyer becomes "
             "the substitute taxpayer (sujeto pasivo sustituto) for Plusvalía Municipal (IIVTNU). "
-            "Barcelona's rate is 30%. The municipality pursues you directly — this is primary, not subsidiary, liability. "
-            "Amount depends on the cadastral land value and how long the seller has owned the property."
+            f"{municipality}'s rate is {rate_pct}. The municipality pursues you directly — primary, not subsidiary, liability. "
+            "Amount depends on the cadastral land value and holding period. "
+            + filing_info
         ),
         "action": (
             "Request the seller's Certificado de residencia fiscal en España before signing. "
             "If unconfirmed, negotiate a price retention to cover the estimated tax. "
-            "File Modelo 081 at ORGT Barcelona within 30 working days of signing."
+            "File Modelo 081 at the local Ayuntamiento within 30 working days."
         ),
     }]
 
@@ -957,5 +1059,81 @@ def _rent_control_barcelona(user_answers=None) -> list[dict]:
             "to get the legal rent ceiling for this address. "
             "(2) Request the last rental contract from the seller — this sets your cap if rented in the last 5 years. "
             "(3) Model your yield using the SERPAVI maximum, not current market asking rents."
+        ),
+    }]
+
+
+def _bcn_zona_tensionada_info() -> list[dict]:
+    """Always-shown Barcelona disclosure: zona tensionada status affects all buyers."""
+    return [{
+        "id": "bcn_zona_tensionada",
+        "severity": "info",
+        "category": "legal",
+        "title": "Barcelona is a declared 'tensioned housing market' (zona tensionada) until March 2027",
+        "detail": (
+            "Ley 12/2023 (March 2024): all of Barcelona municipality is designated an Àrea de Mercat "
+            "d'Habitatge Tens. This affects: (1) Rental income — new leases are capped at reference index; "
+            "(2) Future resale — buyers in this market pay progressive ITP (10–12%); "
+            "(3) Building works — some renovations require habitability-plan approval. "
+            "Declaration valid until 15 March 2027, extendable. "
+            "Not a risk — a legal context every Barcelona buyer should know."
+        ),
+        "action": (
+            "If planning to rent: query serpavi.mivau.gob.es for the legal ceiling before buying. "
+            "If planning to owner-occupy: no immediate obligation, but affects future resale context."
+        ),
+    }]
+
+
+def _madrid_itp_no_rent_control(user_answers=None) -> list[dict]:
+    """Madrid-specific: no rent control (unlike Barcelona), ITP is 6%."""
+    rental_intent = getattr(user_answers, "rental_intent", None) if user_answers else None
+    items = []
+    if rental_intent in ("long_term", "short_term"):
+        items.append({
+            "id": "madrid_no_rent_control",
+            "severity": "green",
+            "category": "legal",
+            "title": "Madrid: no rent control — rental income is unregulated",
+            "detail": (
+                "Comunidad de Madrid has NOT declared any zona tensionada under Ley 12/2023. "
+                "There are no rent control caps on new contracts, no IRAV index restriction, "
+                "and no SERPAVI reference ceiling applies. "
+                "You can set market rents freely for both long-term and mid-term rentals. "
+                "Short-term tourist rentals (VUT licenses) remain available subject to "
+                "Ayuntamiento de Madrid urban planning restrictions."
+            ),
+            "action": (
+                "Verify that the property's urbanistic classification allows the rental model you plan. "
+                "Check VUT license availability for short-term: sede.madrid.es"
+            ),
+        })
+    return items
+
+
+def _energy_cert_upgrade(prop_data: dict, hidden_costs_data: dict) -> list[dict]:
+    """Energy cert E/F/G: surface as a prominent disclosure (EU 2033 mandate)."""
+    cert = (prop_data.get("energy_cert") or "").strip().upper()
+    if cert not in ("E", "F", "G"):
+        return []
+    upgrade_est = hidden_costs_data.get("energy_upgrade_estimate_eur")
+    cost_str = f"€{upgrade_est:,}" if upgrade_est else "€9,000–€28,000+"
+    return [{
+        "id": "energy_cert_upgrade_required",
+        "severity": "red" if cert == "G" else "yellow",
+        "category": "building",
+        "title": f"Energy cert {cert}: EU 2033 upgrade mandatory — estimated cost {cost_str}",
+        "detail": (
+            f"Spain's transposition of EU Directive 2024/1275 (EPBD recast) requires residential "
+            f"properties to reach at least class E by 2030 and class D by 2033. "
+            f"This property has certificate {cert} — upgrades are legally required within the decade. "
+            f"Estimated cost: {cost_str} (insulation, windows, heating system, scaled by surface area). "
+            "Banks are beginning to apply higher mortgage rates or reduced LTVs for properties below C. "
+            "This cost should be deducted from your offer price."
+        ),
+        "action": (
+            "Request a pre-purchase energy audit (certificado energético pre-venta) to get a firm "
+            "upgrade cost estimate. Deduct estimated upgrade cost from your offer. "
+            "Ask the seller for any existing ordera de mejora from local authorities."
         ),
     }]

@@ -9,7 +9,7 @@ cert letter (graduated scale) rather than a binary upgrade-required flag.
 from __future__ import annotations
 
 
-def estimate_hidden_costs(prop: dict, listing_price: float | None = None, parking_monthly: int | None = None) -> dict:
+def estimate_hidden_costs(prop: dict, listing_price: float | None = None, parking_monthly: int | None = None, city: str | None = None) -> dict:
     surface    = prop.get("surface_m2") or 80
     year_built = prop.get("year_built")
     age        = (2026 - year_built) if year_built else None
@@ -18,9 +18,12 @@ def estimate_hidden_costs(prop: dict, listing_price: float | None = None, parkin
     has_lift   = prop.get("has_lift", False)
     ite_status = prop.get("ite_status", "UNKNOWN")
 
-    # IBI (municipal property tax) — Barcelona municipal rate is 0.66% of cadastral value
+    # IBI (municipal property tax) — rate varies by municipality
+    # Barcelona: 0.66% | Madrid: 0.456% (Ayuntamiento 2024)
+    from scoring.transaction_costs import IBI_RATES, IBI_RATE_DEFAULT
+    ibi_rate = IBI_RATES.get((city or "").lower(), IBI_RATE_DEFAULT)
     cadastral  = prop.get("cadastral_value") or (listing_price * 0.5 if listing_price else surface * 1_800)
-    ibi_annual = round(cadastral * 0.0066)
+    ibi_annual = round(cadastral * ibi_rate)
 
     # Community fee: older buildings with lifts cost more to maintain
     age_known = age is not None

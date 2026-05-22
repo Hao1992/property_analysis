@@ -22,6 +22,7 @@ def estimate_fair_value(
     prop: dict,
     listing_price: float | None = None
 ) -> dict:
+    _surface_known = prop.get("surface_m2") is not None
     surface = prop.get("surface_m2") or 80
     base = median_ppm2 * surface
     adjustments = []
@@ -102,19 +103,28 @@ def estimate_fair_value(
 
     if listing_price:
         delta_pct = ((listing_price - fair_value) / fair_value) * 100
-        result["vs_listing_pct"] = round(delta_pct, 1)
-        result["verdict"] = (
-            "significantly_overpriced" if delta_pct > 15 else
-            "overpriced"               if delta_pct > 5  else
-            "fair"                     if delta_pct >= -5 else
-            "undervalued"
-        )
-        result["price_fairness_score"] = (
-            20  if delta_pct > 25 else
-            40  if delta_pct > 15 else
-            60  if delta_pct > 5  else
-            80  if delta_pct >= -5 else
-            100
-        )
+        # Only show vs_listing_pct and verdict when surface is known.
+        # With 80m² fallback, a Pedralbes villa at €900k falsely shows "+123% overpriced".
+        if _surface_known:
+            result["vs_listing_pct"] = round(delta_pct, 1)
+            result["verdict"] = (
+                "significantly_overpriced" if delta_pct > 15 else
+                "overpriced"               if delta_pct > 5  else
+                "fair"                     if delta_pct >= -5 else
+                "undervalued"
+            )
+            result["price_fairness_score"] = (
+                20  if delta_pct > 25 else
+                40  if delta_pct > 15 else
+                60  if delta_pct > 5  else
+                80  if delta_pct >= -5 else
+                100
+            )
+        else:
+            # Surface unknown → price comparison unreliable; suppress verdict
+            result["vs_listing_pct"] = None
+            result["verdict"] = "unknown"
+            result["price_fairness_score"] = None
+            result["_surface_assumed_m2"] = 80  # flag for UI to show disclaimer
 
     return result

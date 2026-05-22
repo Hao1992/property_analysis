@@ -468,14 +468,23 @@ out center tags;
 async def get_parking_analysis(
     lat: float,
     lng: float,
-    district: str,
+    district: str | None,
     has_private_parking: bool,
     has_car: bool,
+    city: str | None = None,
 ) -> dict:
-    garages_raw, area_verda_data = await asyncio.gather(
-        _fetch_garages(lat, lng),
-        _get_area_verda_data(),
-    )
+    city_key = (city or "barcelona").lower()
+    is_barcelona = (city_key == "barcelona")
+
+    if is_barcelona:
+        garages_raw, area_verda_data = await asyncio.gather(
+            _fetch_garages(lat, lng),
+            _get_area_verda_data(),
+        )
+    else:
+        # Area Verda is Barcelona-only — skip it for other cities
+        garages_raw = await _fetch_garages(lat, lng)
+        area_verda_data = None
 
     official_segments: list[tuple[float, AreaVerdaSegment]] = []
     resident_zone = None
@@ -522,7 +531,7 @@ async def get_parking_analysis(
             for distance, segment in selected_segments
         ],
         "official_data_last_modified": area_verda_data.last_modified if area_verda_data else None,
-        "official_source_url": AREA_VERDA_MAP_URL,
+        "official_source_url": AREA_VERDA_MAP_URL if is_barcelona else None,
         "recommended_option": option,
         "recommended_monthly_eur": None if has_private_parking else UNVERIFIED_MONTHLY_PRICE_SENTINEL,
         "parking_needed": parking_needed,
