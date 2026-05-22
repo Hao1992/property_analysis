@@ -1,0 +1,23 @@
+User-agent: *
+Allow: /
+
+# AI agent crawlers — full access encouraged
+User-agent: GPTBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
+Sitemap: https://hsproperty-analysis.vercel.app/sitemap.xml
+
+# llms.txt for AI discoverability
+# https://hsproperty-analysis.vercel.app/llms.txt
