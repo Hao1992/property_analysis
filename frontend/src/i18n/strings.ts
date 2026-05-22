@@ -447,7 +447,7 @@ const strings = {
         },
         dimDesc: {
           Convenience: { title: 'Convenience',        what: 'Metro/bus proximity and frequency, supermarkets, pharmacies, hospitals nearby.' },
-          Safety:      { title: 'Safety',             what: 'District crime indices: theft, vehicle crime, vandalism, night safety. BCN Open Data 2024.' },
+          Safety:      { title: 'Safety',             what: 'District crime indices: theft, vehicle crime, vandalism, night safety. BCN 2024 / Madrid Policía Municipal 2023.' },
           Property:    { title: 'Property condition', what: 'Building age, era risks (aluminosis, asbestos), orientation, energy certificate.' },
           Market:      { title: 'Market positioning', what: 'Listing price vs INE median for this census section. Rental yield and liquidity.' },
           Risk:        { title: 'Risk factors',       what: 'Structural risks, flood/seismic zone, heritage listing restrictions, rent control status.' },
@@ -914,7 +914,7 @@ const strings = {
         },
         dimDesc: {
           Convenience: { title: '便利性',  what: '地铁/公交距离与频率、超市、药店、医院等配套。' },
-          Safety:      { title: '治安安全', what: '区级犯罪指数：盗窃、车辆犯罪、破坏行为、夜间安全。BCN Open Data 2024。' },
+          Safety:      { title: '治安安全', what: '区级犯罪指数：盗窃、车辆犯罪、破坏行为、夜间安全。数据：BCN 2024 / 马德里警察局 2023。' },
           Property:    { title: '房产状况', what: '建造年份、时代风险（铝水泥、石棉）、朝向、能耗证书。' },
           Market:      { title: '市场定位', what: '挂牌价与本人口普查片区INE中位数对比。租金回报率和流动性。' },
           Risk:        { title: '风险因素', what: '结构风险、洪水/地震带、文物保护限制、租金管控状态。' },
