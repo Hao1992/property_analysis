@@ -167,7 +167,7 @@ def _translate_zh(
                 else (
                     "本楼未发现注册旅游公寓"
                     if pct == 0
-                    else (f"100米内有 {count_100m} 套 Airbnb 房源" if count_100m else f"旅游公寓密度：{risk}（区级估算）")
+                    else (f"100米内有 {count_100m} 套 Airbnb 房源" if count_100m else f"旅游公寓密度：{'极高' if risk=='very_high' else '高' if risk=='high' else '中等' if risk=='medium' else '低'}（区级估算）")
                 )
             ),
             "detail": (
@@ -408,6 +408,48 @@ def _translate_zh(
                 ),
             }
         ),
+        "bcn_zona_tensionada": {
+            "title": "巴塞罗那已被列为「住宅紧张市场区域」（zona tensionada），有效期至2027年3月",
+            "detail": (
+                "《住房权利法》（Ley 12/2023，2024年3月生效）：全巴塞罗那市被列为市场紧张区域。"
+                "影响：（1）租金收益受管控，新合同须参照指数上限；"
+                "（2）再次出售时仍适用累进ITP（10–12%）；"
+                "（3）部分改造工程需额外报批。"
+                "这不是风险，而是每位巴塞罗那买家都应了解的法律背景。"
+            ),
+            "action": (
+                "如计划出租：签约前请在 serpavi.mivau.gob.es 查询本地址合法租金上限。"
+                "如自住：暂无直接义务，但影响未来出售背景。"
+            ),
+        },
+        "madrid_no_rent_control": {
+            "title": "马德里：无租金管控——租金收益不受限制",
+            "detail": (
+                "马德里自治区未依据《住房权利法》（Ley 12/2023）宣布任何「紧张区域」。"
+                "新合同不受IRAV指数限制，无SERPAVI参考上限。"
+                "长租和中租均可按市场价自由定价。"
+                "短租（VUT牌照）仍须符合马德里市政规划规定。"
+            ),
+            "action": "核实房产规划分类是否允许你的租赁模式。短租可在 sede.madrid.es 查询VUT牌照可用性。",
+        },
+        "energy_cert_upgrade_required": {
+            "title": (
+                f"能耗证书低于D级：欧盟2033年改造强制令，预计费用约 €{hidden_costs_data.get('energy_upgrade_estimate_eur', 0):,}"
+                if hidden_costs_data.get("energy_upgrade_estimate_eur") else
+                "能耗证书差：EU 2033改造强制令，需要提前预算"
+            ),
+            "detail": (
+                "欧盟建筑能效指令（EPBD 2024/1275）要求：2030年前达到E级，2033年前达到D级。"
+                "该房产能耗证书等级较低，在本十年内必须进行改造。"
+                + (f"估算费用：约 €{hidden_costs_data.get('energy_upgrade_estimate_eur', 0):,}（含隔热、窗户、供暖系统，按建筑面积比例计算）。" if hidden_costs_data.get('energy_upgrade_estimate_eur') else "")
+                + "银行已开始对C级以下的房产收取更高贷款利率或降低LTV比例。"
+                + "建议从报价中直接扣减改造费用。"
+            ),
+            "action": (
+                "签约前委托专业机构出具能耗审计报告（certificado energético pre-venta），"
+                "获取准确改造报价后再定价。"
+            ),
+        },
     }
 
     # Special case: neighbourhood_trajectory needs trajectory data passed in
