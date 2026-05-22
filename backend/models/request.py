@@ -22,6 +22,7 @@ class AnalyzeRequest(BaseModel):
     has_terrace: Optional[bool] = None
     has_views:   Optional[bool] = None
     language: str = "en"                   # "en" | "zh" — report output language
+    city_hint: Optional[str] = None        # "barcelona" | "madrid" — from CitySelector, helps geocoding
 
 
 class CompareRequest(BaseModel):

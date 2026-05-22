@@ -80,7 +80,7 @@ def _is_residential(result: dict) -> bool:
     return True
 
 
-async def geocode(address: str) -> dict:
+async def geocode(address: str, city_hint: str | None = None) -> dict:
     """
     Returns {lat, lng, display_name, address, geocode_confidence, geocode_warning,
              city, region, country_code}.
@@ -91,13 +91,14 @@ async def geocode(address: str) -> dict:
     geocode_confidence: "high" | "low"
     geocode_warning:  human-readable explanation when confidence is "low", else None
     """
-    # Detect if user mentioned a supported city in the query for targeted search
+    # Detect city: first from explicit hint (CitySelector), then from address text
     addr_lower = address.lower()
-    _hint_city = None
-    if "madrid" in addr_lower:
-        _hint_city = "madrid"
-    elif "barcelona" in addr_lower or "bcn" in addr_lower:
-        _hint_city = "barcelona"
+    _hint_city = city_hint  # from frontend CitySelector
+    if not _hint_city:
+        if "madrid" in addr_lower:
+            _hint_city = "madrid"
+        elif "barcelona" in addr_lower or "bcn" in addr_lower:
+            _hint_city = "barcelona"
 
     params: dict = {"q": address, "format": "json", "limit": 5, "addressdetails": 1, "countrycodes": "es"}
     # Add viewbox constraint when city hint is detected to reduce false positives

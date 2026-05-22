@@ -27,7 +27,7 @@ export default function App() {
       setProgress(p => p < 85 ? p + Math.random() * 8 : p)
     }, 800)
     try {
-      const data = await analyzeProperty({ ...req, language: lang })
+      const data = await analyzeProperty({ ...req, language: lang, city_hint: selectedCity })
       setProgress(100)
       setTimeout(() => { setResult(data); setProgress(0) }, 300)
     } catch (e: unknown) {

@@ -291,6 +291,7 @@ export interface AnalyzeRequest {
   has_terrace?: boolean;
   has_views?: boolean;
   language?: string;
+  city_hint?: 'barcelona' | 'madrid';
 }
 
 export interface CompareAnalysis {

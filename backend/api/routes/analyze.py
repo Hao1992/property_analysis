@@ -139,13 +139,14 @@ async def _run_full_analysis(
     has_parking_override: bool | None = None,
     has_terrace_override: bool | None = None,
     has_views_override: bool | None = None,
+    city_hint: str | None = None,
 ) -> dict:
     """Core analysis pipeline — used by both /analyze and /compare."""
     from models.user_profile import UserAnswers
     answers = UserAnswers.model_validate_json(user_answers_json) if user_answers_json else None
 
     try:
-        geo = await geocoder.geocode(address)
+        geo = await geocoder.geocode(address, city_hint=city_hint)
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
@@ -401,6 +402,7 @@ async def analyze(req: AnalyzeRequest, request: Request):
                 has_parking_override=req.has_parking,
                 has_terrace_override=req.has_terrace,
                 has_views_override=req.has_views,
+                city_hint=req.city_hint,
             )
     except asyncio.TimeoutError:
         await refund_rate_limit(ip)
