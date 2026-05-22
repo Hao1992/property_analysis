@@ -18,12 +18,12 @@ export interface PoiCategory {
 }
 
 export interface SafetyData {
-  theft_rate_index: number;
-  vehicle_crime_index: number;
-  vandalism_index: number;
-  night_safety_index: number;
-  district: string;
-  data_year: number;
+  theft_rate_index: number | null;
+  vehicle_crime_index: number | null;
+  vandalism_index: number | null;
+  night_safety_index: number | null;
+  district: string | null;
+  data_year: number | null;
 }
 
 export interface PropertyData {
@@ -148,10 +148,10 @@ export interface HiddenCostsData {
 }
 
 export interface NeighbourhoodTrajectoryData {
-  trend: 'rising' | 'stable' | 'declining';
-  new_businesses_12m: number;
-  renovation_permits_12m: number;
-  trend_score: number;
+  trend: 'rising' | 'stable' | 'declining' | null;
+  new_businesses_12m: number | null;
+  renovation_permits_12m: number | null;
+  trend_score: number | null;
 }
 
 export interface NarrativeData {
