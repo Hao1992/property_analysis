@@ -187,7 +187,7 @@ const strings = {
       score: {
         label: 'Composite Score',
         better: 'better than',
-        ofBCN: '% of BCN',
+        ofBCN: '% of Spain',
         confidence: (n: number) => `${n}% data`,
         confidenceSub: (n: number) => `Score based on ${n}% of available data points.`,
         missing: 'Missing:',
@@ -654,7 +654,7 @@ const strings = {
       score: {
         label: '综合评分',
         better: '优于',
-        ofBCN: '% 的巴塞罗那房产',
+        ofBCN: '% 的西班牙房产',
         confidence: (n: number) => `数据完整度 ${n}%`,
         confidenceSub: (n: number) => `评分基于 ${n}% 的可用数据。`,
         missing: '缺失：',

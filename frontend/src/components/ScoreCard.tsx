@@ -7,7 +7,8 @@ interface Props { score: CompositeScore }
 
 const SCORE_TEXT = (s: number) => s >= 75 ? 'text-emerald-600' : s >= 55 ? 'text-amber-600' : 'text-red-600'
 
-const BCN_PERCENTILE = (score: number): number => {
+// Calibrated on BCN+Madrid combined market distribution
+const MARKET_PERCENTILE = (score: number): number => {
   if (score >= 85) return 97; if (score >= 80) return 93; if (score >= 75) return 87
   if (score >= 70) return 78; if (score >= 65) return 66; if (score >= 60) return 54
   if (score >= 55) return 42; if (score >= 50) return 30; if (score >= 45) return 20
@@ -67,7 +68,7 @@ export default function ScoreCard({ score }: Props) {
   const radarData = score.dimensions.map(d => ({ subject: dimShort[d.name] ?? d.name, score: d.score, fullMark: 100 }))
   const confPct      = Math.round((score.confidence ?? 1) * 100)
   const missingDims  = score.dimensions.filter(d => d.score === null || d.score === undefined)
-  const percentile   = BCN_PERCENTILE(score.composite)
+  const percentile   = MARKET_PERCENTILE(score.composite)
   const confStyle    = confPct >= 80 ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : confPct >= 60 ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-red-50 border-red-200 text-red-700'
 
   const penalties = t.sections.score.penalties as Record<string, string>

@@ -56,7 +56,7 @@ function NominatimSuggest({
     debounceRef.current = setTimeout(async () => {
       if (v.length < 5) { setSuggestions([]); return; }
       try {
-        const q = encodeURIComponent(v + (v.toLowerCase().includes('barcelona') ? '' : ', Barcelona'));
+        const q = encodeURIComponent(v); // countrycodes=es already limits to Spain
         const res = await fetch(
           `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=4&addressdetails=1&countrycodes=es`,
           { headers: { 'Accept-Language': 'en' } }

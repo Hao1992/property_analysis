@@ -32,7 +32,8 @@ export default function AddressInput({ onSubmit, loading }: Props) {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
       try {
-        const q = encodeURIComponent(address + (address.toLowerCase().includes('barcelona') ? '' : ', Barcelona'))
+        // Don't append any city — Nominatim already limits to Spain via countrycodes=es
+        const q = encodeURIComponent(address)
         const res = await fetch(
           `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=5&addressdetails=1&countrycodes=es`,
           { headers: { 'Accept-Language': 'en' } }
