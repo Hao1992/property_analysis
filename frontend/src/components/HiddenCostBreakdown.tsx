@@ -74,7 +74,7 @@ export default function HiddenCostBreakdown({ data }: Props) {
 
       <SourceBadge className="mt-2" sources={[
         { label: 'Catastro', url: 'https://www.catastro.meh.es/', note: 'IBI = cadastral × 0.75%' },
-        { label: 'BCN Open Data', url: 'https://opendata-ajuntament.barcelona.cat/', note: 'avg community fee by building age' },
+        { label: 'Spanish market averages', url: 'https://www.catastro.meh.es/', note: 'avg community fee by building age and size' },
       ]} />
     </div>
   );
