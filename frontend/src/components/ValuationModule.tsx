@@ -247,7 +247,7 @@ export default function ValuationModule({ listingPrice, property, comparables, a
         ...(hasComparables && comparables!.source === 'Fotocasa'
           ? [{ label: 'Fotocasa', url: 'https://www.fotocasa.es', note: 'active listings' }]
           : hasComparables
-          ? [{ label: 'District statistics', url: 'https://www.fotocasa.es/es/indice-de-precios', note: '2024 calibrated ranges' }]
+          ? [{ label: comparables!.source ?? 'District statistics', url: 'https://www.idealista.com/news/', note: '2024 calibrated ranges' }]
           : []),
         { label: 'Catastro', url: 'https://www.catastro.meh.es/', note: 'cadastral value, surface' },
       ]} />
