@@ -34,7 +34,7 @@ const strings = {
     },
     footer: {
       brand: 'Beyond Price — Barcelona & Madrid Property Intelligence',
-      data: 'Data: Catastro · INE · OpenStreetMap · Inside Airbnb · Open Data BCN · AI: Claude',
+      data: 'Data: Catastro · INE · OpenStreetMap · Policía Municipal · Inside Airbnb · AI: Claude',
       disclaimer: 'For informational purposes only. Not a substitute for professional legal or financial advice.',
     },
     form: {
@@ -266,7 +266,7 @@ const strings = {
         score: 'Trend score:',
         businesses: 'New businesses (12 mo)',
         permits: 'Renovation permits (12 mo)',
-        note: 'New BCN activity licences + major works permits in district · higher = more activity',
+        note: 'BCN: business licences + major works permits · Madrid: urban development data',
       },
       costs: {
         label: 'Annual Ownership',
@@ -733,7 +733,7 @@ const strings = {
         score: '趋势评分：',
         businesses: '新增商业（近12个月）',
         permits: '装修许可（近12个月）',
-        note: '基于巴塞罗那商业营业执照 + 重大工程许可数据，数量越高代表活跃度越高',
+        note: 'BCN：商业营业执照 + 重大工程许可 · 马德里：城市发展规划数据',
       },
       costs: {
         label: '持有成本',
