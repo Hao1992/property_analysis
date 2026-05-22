@@ -3,6 +3,7 @@ import type { AnalyzeResponse, AnalyzeRequest } from './types/analysis'
 import { analyzeProperty } from './api/client'
 import { useLanguage } from './contexts/LanguageContext'
 import AddressInput from './components/AddressInput'
+import CitySelector, { type City } from './components/CitySelector'
 import Report from './pages/Report'
 import Compare from './pages/Compare'
 import CostCalculator from './components/CostCalculator'
@@ -16,6 +17,7 @@ export default function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
+  const [selectedCity, setSelectedCity] = useState<City>('barcelona')
 
   const handleAnalyze = async (req: AnalyzeRequest) => {
     setLoading(true)
@@ -136,6 +138,7 @@ export default function App() {
               </div>
             </div>
 
+            <CitySelector city={selectedCity} onChange={setSelectedCity} />
             <AddressInput onSubmit={handleAnalyze} loading={loading} />
 
             {loading && (
