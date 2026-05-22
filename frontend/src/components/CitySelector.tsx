@@ -1,10 +1,11 @@
 import { useLanguage } from '../contexts/LanguageContext'
 
-export type City = 'barcelona' | 'madrid'
+export type City = 'barcelona' | 'madrid' | 'valencia'
 
 const CITIES: { value: City; en: string; zh: string; shortEn: string; shortZh: string }[] = [
   { value: 'barcelona', en: 'Barcelona', zh: '巴塞罗那', shortEn: 'BCN', shortZh: '巴塞' },
   { value: 'madrid',    en: 'Madrid',    zh: '马德里',   shortEn: 'MAD', shortZh: '马德' },
+  { value: 'valencia',  en: 'Valencia',  zh: '瓦伦西亚', shortEn: 'VLC', shortZh: '瓦伦' },
 ]
 
 interface Props {
@@ -41,6 +42,8 @@ export default function CitySelector({ city, onChange }: Props) {
       <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>
         {city === 'madrid'
           ? (lang === 'zh' ? '6%印花税 · 无租金管控 · 最高9.8%回报率' : '6% ITP · No rent control · Yields up to 9.8%')
+          : city === 'valencia'
+          ? (lang === 'zh' ? '10%印花税 · 无租金管控 · 注意洪水风险' : '10% ITP · No rent control · Check DANA flood risk')
           : (lang === 'zh' ? '10%印花税 · 租金管控 · 2028短租禁令' : '10% ITP · Rent control · Airbnb ban 2028')
         }
       </p>

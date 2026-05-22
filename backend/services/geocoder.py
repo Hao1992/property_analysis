@@ -18,6 +18,7 @@ _POI_TYPES = {
 _CITY_VIEWBOXES = {
     "barcelona": [41.310, 2.052, 41.470, 2.228],
     "madrid":    [40.312, -3.834, 40.644, -3.520],
+    "valencia":  [39.390, -0.430, 39.540, -0.290],
 }
 
 # Nominatim state/county names → our city keys
@@ -28,10 +29,15 @@ _STATE_TO_CITY = {
     "comunidad de madrid": "madrid",
     "community of madrid": "madrid",
     "madrid": "madrid",
+    "comunitat valenciana": "valencia",
+    "valencian community": "valencia",
+    "comunidad valenciana": "valencia",
 }
 _CITY_TO_CITY = {
     "barcelona": "barcelona",
     "madrid": "madrid",
+    "valencia": "valencia",
+    "valència": "valencia",   # Valencian spelling from Nominatim
 }
 
 
@@ -99,6 +105,8 @@ async def geocode(address: str, city_hint: str | None = None) -> dict:
             _hint_city = "madrid"
         elif "barcelona" in addr_lower or "bcn" in addr_lower:
             _hint_city = "barcelona"
+        elif "valencia" in addr_lower or "valència" in addr_lower:
+            _hint_city = "valencia"
 
     params: dict = {"q": address, "format": "json", "limit": 5, "addressdetails": 1, "countrycodes": "es"}
     # Add viewbox constraint when city hint is detected to reduce false positives
@@ -169,7 +177,7 @@ async def geocode(address: str, city_hint: str | None = None) -> dict:
             )
 
     # Derive region from city
-    _city_to_region = {"barcelona": "catalunya", "madrid": "madrid"}
+    _city_to_region = {"barcelona": "catalunya", "madrid": "madrid", "valencia": "comunitat_valenciana"}
     region = _city_to_region.get(city) if city else None
 
     return {

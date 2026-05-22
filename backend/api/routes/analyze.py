@@ -19,7 +19,7 @@ from models.response import (
     ParkingData, GarageEntry, ParkingStreetSegment,
 )
 from services import geocoder, overpass, google_places, catastro, ine, open_data_bcn
-from services import open_data_mad
+from services import open_data_mad, open_data_vlc
 from services import airbnb_saturation, school_quality, noise_ecosystem, neighbourhood_trajectory
 from services import ai_narrative, disclosures, fotocasa_scraper
 from services.parking import get_parking_analysis
@@ -160,7 +160,7 @@ async def _run_full_analysis(
             status_code=422,
             detail=(
                 f"Address appears to be outside Spain (country: {country_code.upper()}). "
-                "This tool covers properties in Barcelona and Madrid only."
+                "This tool covers properties in Barcelona, Madrid, and Valencia."
             )
         )
 
@@ -168,9 +168,9 @@ async def _run_full_analysis(
     _unsupported_city_warning: str | None = None
     if city is None and country_code == "es":
         _unsupported_city_warning = (
-            "This address is outside Barcelona and Madrid. "
+            "This address is outside Barcelona, Madrid, and Valencia. "
             "Analysis is provided on a best-effort basis — "
-            "safety data, parking, and some financial figures are calibrated for BCN/Madrid only."
+            "safety data, parking, and some financial figures are calibrated for BCN/Madrid/VLC only."
         )
 
     district = open_data_bcn.get_district_from_address(geo["address"], city=city)
@@ -200,6 +200,42 @@ async def _run_full_analysis(
         }
         district = _MAD_SUBURB_TO_DISTRICT.get(_mad_district_raw.lower())
 
+    # For Valencia: extract district name from Nominatim address components
+    if city == "valencia" and district is None:
+        _vlc_district_raw = (
+            geo["address"].get("city_district", "")
+            or geo["address"].get("suburb", "")
+            or geo["address"].get("quarter", "")
+        )
+        _VLC_SUBURB_TO_DISTRICT = {
+            "ciutat vella": "Ciutat Vella", "barri del carme": "Ciutat Vella",
+            "el pilar": "Ciutat Vella", "velluters": "Extramurs",
+            "eixample": "L'Eixample", "l'eixample": "L'Eixample", "ruzafa": "L'Eixample",
+            "extramurs": "Extramurs", "patraix": "Patraix",
+            "campanar": "Campanar", "benimaclet": "Benimaclet",
+            "la saïdia": "La Saïdia", "saïdia": "La Saïdia",
+            "el pla del real": "El Pla del Real", "pla del real": "El Pla del Real",
+            "l'olivereta": "L'Olivereta", "olivereta": "L'Olivereta",
+            "jesús": "Jesús", "jesus": "Jesús",
+            "quatre carreres": "Quatre Carreres",
+            "poblats marítims": "Poblats Marítims", "cabanyal": "Poblats Marítims",
+            "el cabanyal": "Poblats Marítims", "el grau": "Camins al Grau",
+            "camins al grau": "Camins al Grau",
+            "algirós": "Algirós", "algiros": "Algirós",
+            "rascanya": "Rascanya", "benicalap": "Benicalap",
+            "pobles del nord": "Pobles del Nord", "pobles de l'oest": "Pobles de l'Oest",
+            "pobles del sud": "Pobles del Sud",
+        }
+        district = _VLC_SUBURB_TO_DISTRICT.get(_vlc_district_raw.lower())
+        if district is None and _vlc_district_raw:
+            # Try partial match
+            for key, val in _VLC_SUBURB_TO_DISTRICT.items():
+                if key in _vlc_district_raw.lower() or _vlc_district_raw.lower() in key:
+                    district = val
+                    break
+        if district is None and city == "valencia":
+            district = "L'Eixample"  # Valencia city centre fallback
+
     # Step 1: Parallel data fetch (all IO-bound tasks)
     (
         poi_raw, prop_data, safety_data, census_section,
@@ -207,8 +243,8 @@ async def _run_full_analysis(
     ) = await asyncio.gather(
         overpass.fetch_pois(lat, lng),
         catastro.get_property_data(lat, lng),
-        (open_data_mad.get_madrid_safety_data(lat, lng, district)
-         if city == "madrid"
+        (open_data_mad.get_madrid_safety_data(lat, lng, district) if city == "madrid"
+         else open_data_vlc.get_valencia_safety_data(lat, lng, district) if city == "valencia"
          else open_data_bcn.get_safety_data(lat, lng, district)),
         ine.get_census_section_from_coords(lat, lng),
         airbnb_saturation.get_airbnb_saturation(lat, lng, district, city=city),
@@ -292,15 +328,16 @@ async def _run_full_analysis(
     }.get(_comp_position) if _comp_position else None
 
     # City-specific market benchmarks (2024 data)
-    # BCN: slower market, tighter yields; Madrid: faster market, higher yields
+    # BCN: slower market, tighter yields; Madrid: faster market, higher yields; Valencia: mid-yield
     _is_madrid = (city == "madrid")
+    _is_valencia = (city == "valencia")
     market_data = {
-        "annual_growth_pct":      15.2 if _is_madrid else 4.2,   # MAD 2024 ~15%, BCN ~4%
-        "days_on_market":         35   if _is_madrid else 55,    # MAD faster market
+        "annual_growth_pct":      (15.2 if _is_madrid else 12.0 if _is_valencia else 4.2),
+        "days_on_market":         (35   if _is_madrid else 45   if _is_valencia else 55),
         "vs_fair_value_pct":      valuation_data.get("vs_listing_pct", 0),
         "comparables_position_score": _comp_position_score,
-        "rental_yield":           0.048 if _is_madrid else 0.042, # MAD avg ~4.8%, BCN ~4.2%
-        "city_avg_yield":         0.050 if _is_madrid else 0.045, # MAD higher avg yield
+        "rental_yield":           (0.048 if _is_madrid else 0.055 if _is_valencia else 0.042),
+        "city_avg_yield":         (0.050 if _is_madrid else 0.058 if _is_valencia else 0.045),
     }
 
     # Transaction cost data (buyer + seller) — city-aware

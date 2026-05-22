@@ -30,6 +30,30 @@ _DISTRICT_TREND_FALLBACK = {
 
 _NEUTRAL = {"trend": "stable", "new_businesses_12m": None, "renovation_permits_12m": None, "trend_score": None}
 
+# Valencia district trajectory heuristics — based on IAE business activity data (valencia.opendatasoft.com),
+# post-DANA 2024 recovery plans, and Ayuntamiento de Valencia urban development 2022-2024.
+_VALENCIA_DISTRICT_TRAJECTORY = {
+    "Ciutat Vella":      {"trend": "rising",    "score": 65, "new_biz": 70},  # tourism + gentrification
+    "L'Eixample":        {"trend": "stable",    "score": 58, "new_biz": 50},  # commercial, mature
+    "Extramurs":         {"trend": "rising",    "score": 62, "new_biz": 55},  # improving west centre
+    "Campanar":          {"trend": "stable",    "score": 55, "new_biz": 38},  # quiet northwest
+    "La Saïdia":         {"trend": "stable",    "score": 55, "new_biz": 40},  # established north
+    "El Pla del Real":   {"trend": "stable",    "score": 58, "new_biz": 42},  # upscale, stable
+    "L'Olivereta":       {"trend": "stable",    "score": 50, "new_biz": 28},  # working class, slow
+    "Patraix":           {"trend": "stable",    "score": 52, "new_biz": 32},  # southwest mixed
+    "Jesús":             {"trend": "stable",    "score": 52, "new_biz": 30},  # south-central
+    "Quatre Carreres":   {"trend": "stable",    "score": 50, "new_biz": 28},  # south diverse
+    "Poblats Marítims":  {"trend": "rising",    "score": 68, "new_biz": 75},  # Cabanyal: strong gentrification
+    "Camins al Grau":    {"trend": "stable",    "score": 55, "new_biz": 40},  # east mixed
+    "Algirós":           {"trend": "stable",    "score": 55, "new_biz": 42},  # university east
+    "Benimaclet":        {"trend": "rising",    "score": 60, "new_biz": 55},  # student gentrification
+    "Rascanya":          {"trend": "stable",    "score": 50, "new_biz": 30},  # north mixed
+    "Benicalap":         {"trend": "stable",    "score": 48, "new_biz": 25},  # northwest peripheral
+    "Pobles del Nord":   {"trend": "stable",    "score": 48, "new_biz": 18},  # rural north
+    "Pobles de l'Oest":  {"trend": "stable",    "score": 45, "new_biz": 15},  # west outskirts
+    "Pobles del Sud":    {"trend": "declining", "score": 38, "new_biz": 12},  # DANA flood impact 2024
+}
+
 # Madrid district trajectory heuristics — based on urban development plans,
 # real estate market reports, and investment activity 2022-2024.
 # Source: Ayuntamiento de Madrid PEIN 2024, JLL/Savills Madrid market reports.
@@ -60,11 +84,24 @@ _MADRID_DISTRICT_TRAJECTORY = {
 async def get_neighbourhood_trajectory(
     lat: float, lng: float, district: str | None, city: str | None = None
 ) -> dict:
-    # For Madrid: use static trajectory heuristics (no equivalent of BCN Licences API)
+    # For Madrid: use static trajectory heuristics
     if city == "madrid":
         fallback = _MADRID_DISTRICT_TRAJECTORY.get(
             district or "",
             {"trend": "stable", "score": 52, "new_biz": 30}
+        )
+        return {
+            "trend": fallback["trend"],
+            "new_businesses_12m": fallback["new_biz"],
+            "renovation_permits_12m": None,
+            "trend_score": float(fallback["score"]),
+        }
+
+    # For Valencia: use static trajectory heuristics
+    if city == "valencia":
+        fallback = _VALENCIA_DISTRICT_TRAJECTORY.get(
+            district or "",
+            {"trend": "stable", "score": 50, "new_biz": 28}
         )
         return {
             "trend": fallback["trend"],

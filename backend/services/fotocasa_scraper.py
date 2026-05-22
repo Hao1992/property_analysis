@@ -80,6 +80,31 @@ _MADRID_DISTRICT_STATIC: dict[str, dict] = {
 }
 _MADRID_DEFAULT_RANGE = {"p25": 3000, "median": 4500, "p75": 6500}  # Madrid city-wide fallback
 
+# Valencia district static price ranges (€/m², 2024-2025)
+# Source: Idealista/Fotocasa Valencia annual reports + Tinsa Q4 2024
+_VALENCIA_DISTRICT_STATIC: dict[str, dict] = {
+    "Ciutat Vella":      {"p25": 2600, "median": 3800, "p75": 5500},  # historic centre
+    "L'Eixample":        {"p25": 2000, "median": 2800, "p75": 4200},  # commercial core
+    "El Pla del Real":   {"p25": 2400, "median": 3200, "p75": 4800},  # upscale university
+    "Poblats Marítims":  {"p25": 1800, "median": 2600, "p75": 4000},  # Cabanyal, beach
+    "Algirós":           {"p25": 1800, "median": 2400, "p75": 3500},  # east university
+    "Benimaclet":        {"p25": 1700, "median": 2300, "p75": 3400},  # student area
+    "Extramurs":         {"p25": 1700, "median": 2400, "p75": 3600},  # west of centre
+    "La Saïdia":         {"p25": 1600, "median": 2300, "p75": 3400},  # north-central
+    "Campanar":          {"p25": 1600, "median": 2200, "p75": 3200},  # northwest
+    "Camins al Grau":    {"p25": 1600, "median": 2200, "p75": 3200},  # east mixed
+    "Patraix":           {"p25": 1400, "median": 1900, "p75": 2800},  # southwest
+    "Jesús":             {"p25": 1400, "median": 1900, "p75": 2700},  # south-central
+    "Rascanya":          {"p25": 1300, "median": 1800, "p75": 2600},  # north mixed
+    "Quatre Carreres":   {"p25": 1300, "median": 1800, "p75": 2600},  # south diverse
+    "L'Olivereta":       {"p25": 1200, "median": 1700, "p75": 2500},  # working class west
+    "Benicalap":         {"p25": 1200, "median": 1700, "p75": 2400},  # northwest peripheral
+    "Pobles del Nord":   {"p25": 1000, "median": 1500, "p75": 2200},  # rural north
+    "Pobles de l'Oest":  {"p25":  900, "median": 1400, "p75": 2000},  # west outskirts
+    "Pobles del Sud":    {"p25":  900, "median": 1300, "p75": 1900},  # south (flood zone)
+}
+_VALENCIA_DEFAULT_RANGE = {"p25": 1500, "median": 2100, "p75": 3200}  # Valencia city-wide
+
 _HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -138,11 +163,15 @@ async def get_market_comparables(
     max_size = round(size * 1.40 / 10) * 10
     size_range = f"{min_size}–{max_size} m²"
 
-    # Madrid: use Madrid-specific static data (no Fotocasa live scraping for Madrid yet)
-    is_madrid = (city == "madrid") or (district in _MADRID_DISTRICT_STATIC and city != "barcelona")
+    # Madrid/Valencia: use city-specific static data (no Fotocasa live scraping)
+    is_madrid = (city == "madrid") or (district in _MADRID_DISTRICT_STATIC and city not in ("barcelona", "valencia"))
+    is_valencia = (city == "valencia") or (district in _VALENCIA_DISTRICT_STATIC and city not in ("barcelona", "madrid"))
     if is_madrid:
         static = _MADRID_DISTRICT_STATIC.get(district, _MADRID_DEFAULT_RANGE)
-        slug = None  # No Madrid live scraping
+        slug = None
+    elif is_valencia:
+        static = _VALENCIA_DISTRICT_STATIC.get(district, _VALENCIA_DEFAULT_RANGE)
+        slug = None
     else:
         slug = DISTRICT_SLUGS.get(district)
         static = DISTRICT_STATIC.get(district, _DEFAULT_RANGE)
@@ -194,7 +223,9 @@ async def get_market_comparables(
         median_ppm2 = static["median"]
         p25 = static["p25"]
         p75 = static["p75"]
-        source = "Madrid district statistics" if is_madrid else "district statistics"
+        source = ("Madrid district statistics" if is_madrid
+                  else "Valencia district statistics" if is_valencia
+                  else "district statistics")
         count = None
         sample = []
 

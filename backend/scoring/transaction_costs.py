@@ -4,7 +4,7 @@ Two functions:
   calculate_acquisition_costs  — buyer's total cash needed
   estimate_seller_economics    — seller's costs → floor price / negotiation headroom
 
-Supported cities: "barcelona" (Catalunya ITP), "madrid" (Madrid ITP)
+Supported cities: "barcelona" (Catalunya ITP), "madrid" (Madrid ITP), "valencia" (CV ITP)
 Default (None) falls back to Catalunya rates for backward compat.
 """
 from __future__ import annotations
@@ -16,20 +16,23 @@ _IVA_RATE = 0.10
 _AJD_RATES = {
     "barcelona": 0.015,   # Catalunya: 1.5%
     "madrid":    0.0075,  # Comunidad de Madrid: 0.75%
+    "valencia":  0.015,   # Comunitat Valenciana: 1.5%
 }
 
 # IBI municipal property tax rates (% of cadastral value, annual)
 IBI_RATES = {
-    "barcelona": 0.0066,  # Barcelona municipality (Ajuntament 2024)
-    "madrid":    0.00456, # Madrid municipality (Ayuntamiento 2024)
+    "barcelona": 0.0066,   # Barcelona municipality (Ajuntament 2024)
+    "madrid":    0.00456,  # Madrid municipality (Ayuntamiento 2024)
+    "valencia":  0.005784, # Valencia municipality (Ayuntamiento de Valencia 2024)
 }
 IBI_RATE_DEFAULT = 0.0066  # fall back to Barcelona if city unknown
 
 # Plusvalía: land fraction for urban flats (suelo % of cadastral), BCN tipo de gravamen
-_LAND_FRACTION = 0.65        # urban BCN/MAD: ~65% of cadastral is land value
+_LAND_FRACTION = 0.65        # urban BCN/MAD/VLC: ~65% of cadastral is land value
 _PLUSVALIA_TAX_RATES = {
     "barcelona": 0.30,   # BCN tipo de gravamen (2024)
     "madrid":    0.29,   # Madrid tipo de gravamen (2024)
+    "valencia":  0.297,  # Valencia Ayuntamiento tipo de gravamen (2024, max 30%)
 }
 _PLUSVALIA_TAX_RATE_DEFAULT = 0.30
 
@@ -99,6 +102,10 @@ def calculate_acquisition_costs(
         if city_key == "madrid":
             transfer_tax = round(listing_price * 0.06)
             transfer_tax_label = "ITP (6%, Comunidad de Madrid)"
+            transfer_total = transfer_tax
+        elif city_key == "valencia":
+            transfer_tax = round(listing_price * 0.10)
+            transfer_tax_label = "ITP (10%, Comunitat Valenciana)"
             transfer_total = transfer_tax
         else:
             # Catalunya progressive

@@ -43,6 +43,31 @@ MADRID_DISTRICT_MEDIAN_PPM2 = {
 }
 MADRID_CITY_MEDIAN_PPM2 = 4500
 
+# Valencia district fallback median prices (€/m²) — 2024 market estimates
+# Source: Idealista/Fotocasa Valencia annual reports + Tinsa 2024
+VALENCIA_DISTRICT_MEDIAN_PPM2 = {
+    "Ciutat Vella":      3800,  # historic centre, strong demand
+    "L'Eixample":        2800,  # commercial/residential core
+    "Extramurs":         2400,  # west of centre, mixed
+    "Campanar":          2200,  # northwest residential
+    "La Saïdia":         2300,  # north-central residential
+    "El Pla del Real":   3200,  # upscale university area
+    "L'Olivereta":       1700,  # working class west
+    "Patraix":           1900,  # southwest mixed
+    "Jesús":             1900,  # south-central
+    "Quatre Carreres":   1800,  # south, diverse
+    "Poblats Marítims":  2600,  # Cabanyal beach area, gentrifying
+    "Camins al Grau":    2200,  # east mixed
+    "Algirós":           2400,  # east university area
+    "Benimaclet":        2300,  # north-east student area
+    "Rascanya":          1800,  # north mixed
+    "Benicalap":         1700,  # northwest peripheral
+    "Pobles del Nord":   1500,  # rural north
+    "Pobles de l'Oest":  1400,  # west outskirts
+    "Pobles del Sud":    1300,  # south outskirts (DANA flood-affected)
+}
+VALENCIA_CITY_MEDIAN_PPM2 = 2100
+
 # Legacy alias (kept for backward compat with callers that don't pass city)
 DISTRICT_MEDIAN_PPM2 = BCN_DISTRICT_MEDIAN_PPM2
 
@@ -78,6 +103,8 @@ async def get_median_price_ppm2(
     city_key = (city or "barcelona").lower()
     if city_key == "madrid":
         return float(MADRID_DISTRICT_MEDIAN_PPM2.get(district or "", MADRID_CITY_MEDIAN_PPM2))
+    if city_key == "valencia":
+        return float(VALENCIA_DISTRICT_MEDIAN_PPM2.get(district or "", VALENCIA_CITY_MEDIAN_PPM2))
     # Barcelona (default)
     return float(BCN_DISTRICT_MEDIAN_PPM2.get(district or "", BCN_CITY_MEDIAN_PPM2))
 

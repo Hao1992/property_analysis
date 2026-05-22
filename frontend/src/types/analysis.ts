@@ -244,7 +244,7 @@ export interface AnalyzeResponse {
   listing_price?: number;
   geocode_confidence: 'high' | 'low';
   geocode_warning?: string;
-  city?: 'barcelona' | 'madrid' | null;
+  city?: 'barcelona' | 'madrid' | 'valencia' | null;
   property: PropertyData;
   disclosures: DisclosureItem[];
   poi_categories: PoiCategory[];
@@ -291,7 +291,7 @@ export interface AnalyzeRequest {
   has_terrace?: boolean;
   has_views?: boolean;
   language?: string;
-  city_hint?: 'barcelona' | 'madrid';
+  city_hint?: 'barcelona' | 'madrid' | 'valencia';
 }
 
 export interface CompareAnalysis {

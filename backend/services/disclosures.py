@@ -29,6 +29,7 @@ def generate_disclosures(
     city_key = (city or "unknown").lower()
     is_barcelona = (city_key == "barcelona")
     is_madrid    = (city_key == "madrid")
+    is_valencia  = (city_key == "valencia")
 
     items += _transaction_costs(listing_price, prop_data, city=city_key)
     items += _catastro_tax_trap(prop_data, listing_price, city=city_key)
@@ -50,6 +51,10 @@ def generate_disclosures(
         items += _bcn_zona_tensionada_info()
     if is_madrid:
         items += _madrid_itp_no_rent_control(user_answers)
+    if is_valencia:
+        items += _dana_flood_risk_valencia(prop_data)  # P0: life-safety disclosure
+        items += _valencia_no_rent_control(user_answers)
+        items += _valencia_vpo_risk(prop_data)
 
     # Sort: red first, then yellow, then green/info
     _ORDER = {"red": 0, "yellow": 1, "green": 2, "info": 3}
@@ -86,11 +91,16 @@ def _translate_zh(
     cadastral = prop_data.get("cadastral_value")
     price = listing_price or (cadastral / 0.35 if cadastral else None)
     is_madrid = (city == "madrid")
+    is_valencia = (city == "valencia")
     # City-aware ITP rate
     if is_madrid:
         _itp_rate = 0.06
         _itp_label_zh = "6% 产权转让税（ITP，马德里）"
         _overhead_range_zh = "8–9%"
+    elif is_valencia:
+        _itp_rate = 0.10
+        _itp_label_zh = "10% 产权转让税（ITP，瓦伦西亚自治区，固定税率）"
+        _overhead_range_zh = "12–13%"
     else:
         # Catalunya progressive — use effective rate for display
         from scoring.transaction_costs import _catalunya_itp_progressive
@@ -152,13 +162,14 @@ def _translate_zh(
                 else f"购房税费约为房价的{_overhead_range_zh}，需额外准备"
             ),
             "detail": (
-                f"{'在马德里' if is_madrid else '在加泰罗尼亚'}购买二手房，买家须支付："
+                f"{'在马德里' if is_madrid else '在瓦伦西亚' if is_valencia else '在加泰罗尼亚'}购买二手房，买家须支付："
                 + _itp_label_zh
                 + (f"约 €{itp:,}" if itp else "")
                 + f"、公证及土地登记费约 1.5%"
                 + (f"（€{notary:,}）" if notary else "")
                 + "、律师费约 1%（建议聘请）。"
                 + ("大多数外籍买家低估了这部分费用，往往多付 €1–2万。" if is_madrid
+                   else "大多数外籍买家低估了这部分费用，往往多付 €1.5–2.5万。" if is_valencia
                    else "大多数外籍买家低估了这部分费用，往往多付 €2–4万。")
             ),
             "action": "报价前确认总预算已包含这部分税费，而非事后补充。",
@@ -341,15 +352,15 @@ def _translate_zh(
                 "买方成为市政增值税（Plusvalía Municipal/IIVTNU）的替代纳税人（sujeto pasivo sustituto）。"
                 f"这是第一位法律责任——{'马德里市政府' if is_madrid else '市政府'}可直接向你追缴，无需先向卖方追究。"
                 + (
-                    f"基于地籍估值（€{int(cadastral):,}）估算：土地部分（约65%） × 年限系数 × {'29%（马德里税率）' if is_madrid else '30%（巴塞罗那税率）'}≈ €{plusvalia_est:,}。"
+                    f"基于地籍估值（€{int(cadastral):,}）估算：土地部分（约65%） × 年限系数 × {'29%（马德里税率）' if is_madrid else '29.7%（瓦伦西亚税率）' if is_valencia else '30%（巴塞罗那税率）'}≈ €{plusvalia_est:,}。"
                     if plusvalia_est and cadastral else ""
                 ) +
-                f"实际金额取决于卖方持有年限及地籍土地价值。截止时间：签约后30个工作日内，通过{'Ayuntamiento de Madrid' if is_madrid else 'ORGT'}提交Modelo 081。"
+                f"实际金额取决于卖方持有年限及地籍土地价值。截止时间：签约后30个工作日内，通过{'Ayuntamiento de Madrid' if is_madrid else 'Ayuntamiento de Valencia' if is_valencia else 'ORGT'}提交Modelo 081。"
             ),
             "action": (
                 "签约前：（1）要求卖方出示西班牙税务居民证明（Certificado de residencia fiscal en España）；"
                 + (f"（2）在购房价格中预留约 €{plusvalia_est:,} 用于缴纳此税；" if plusvalia_est else "（2）协商在房价中保留估算金额；")
-                + f"（3）签约后30个工作日内通过{'Ayuntamiento de Madrid' if is_madrid else 'ORGT'}申报缴纳。"
+                + f"（3）签约后30个工作日内通过{'Ayuntamiento de Madrid' if is_madrid else 'Ayuntamiento de Valencia' if is_valencia else 'ORGT'}申报缴纳。"
             ),
         },
         "irnr_withholding_buyer": {
@@ -453,6 +464,50 @@ def _translate_zh(
                 "获取准确改造报价后再定价。"
             ),
         },
+        "dana_flood_risk_valencia": {
+            "title": "瓦伦西亚DANA洪灾风险：购房前必查PATRICOVA洪水风险图（2024年11月洪灾致220+人死亡）",
+            "detail": (
+                "2024年11月DANA风暴在瓦伦西亚省造成220余人遇难，75个市镇遭受洪灾，"
+                "大量房产被毁。Generalitat Valenciana的PATRICOVA洪水风险图（patricova.gva.es）"
+                "正在上调评级——许多此前低风险区域在本次洪灾中严重受损。"
+                "南部部分地区（Pobles del Sud、Quatre Carreres部分、Alboraia、Paiporta、Picanya等）"
+                "直接受灾。灾后保险费率上涨，部分险种已停止承保洪灾高风险区域。"
+                "银行可能对PATRICOVA高风险区域房产拒绝或限制抵押贷款。"
+            ),
+            "action": (
+                "签约前：（1）在patricova.gva.es查询该房产的PATRICOVA洪水风险分区；"
+                "（2）确认现有建筑保险是否涵盖DANA类型洪灾（西班牙赔偿保险联盟CCS承保特殊灾难，但需确认理赔流程）；"
+                "（3）要求卖方提供证明，说明该房产在2024年11月未受洪灾影响；"
+                "（4）向银行确认该房产在灾后重新评估后仍可获得抵押贷款。"
+            ),
+        },
+        "valencia_no_rent_control": {
+            "title": "瓦伦西亚：无租金管控——租金收益不受限制",
+            "detail": (
+                "瓦伦西亚自治区未依据《住房权利法》（Ley 12/2023）宣布任何「紧张区域」（zona tensionada），"
+                "与巴塞罗那不同。新租约不受任何IRAV指数限制，无SERPAVI参考上限，"
+                "长租和中租可按市场价自由定价。"
+                "短租（VUT牌照）需向Generalitat Valenciana注册登记。"
+            ),
+            "action": (
+                "确认房产规划分类是否允许你的租赁模式。"
+                "短租可在 turisme.gva.es 申请VUT牌照注册。"
+            ),
+        },
+        "valencia_vpo_risk": {
+            "title": "核查该房产是否为保障性住房（VPO）——转售价格可能受限",
+            "detail": (
+                "瓦伦西亚拥有大量1960–1990年建造的保障性住房（VPO，Vivienda de Protección Oficial）。"
+                "VPO房产的转售价格受官方上限约束（通常远低于市场价），"
+                "Generalitat Valenciana享有优先购买权，且不能按市场价出租。"
+                "VPO限制可持续15–30年，但许多二手挂牌房源未标注VPO状态。"
+            ),
+            "action": (
+                "签约前：（1）向房产登记处（Registro de la Propiedad）索取nota simple，VPO状态会列入产权负担；"
+                "（2）向Generalitat Valenciana住房厅核实该房产VPO限制到期时间及最高转售价格；"
+                "（3）如确认为VPO，务必了解具体到期日和价格上限后再做决定。"
+            ),
+        },
     }
 
     # Special case: neighbourhood_trajectory needs trajectory data passed in
@@ -491,6 +546,7 @@ def _transaction_costs(listing_price: float | None, prop_data: dict, city: str =
     cadastral = prop_data.get("cadastral_value")
     price = listing_price or (cadastral / 0.35 if cadastral else None)
     is_madrid = (city == "madrid")
+    is_valencia = (city == "valencia")
 
     if not price:
         if is_madrid:
@@ -503,6 +559,19 @@ def _transaction_costs(listing_price: float | None, prop_data: dict, city: str =
                     "In the Comunidad de Madrid, resale property buyers pay: 6% transfer tax (ITP), "
                     "~1.5% notary + Land Registry, ~1% lawyer. "
                     "This surprises most non-Spanish buyers who expect 5%."
+                ),
+                "action": "Budget for total transaction cost before making an offer, not after.",
+            }]
+        if is_valencia:
+            return [{
+                "id": "transaction_costs",
+                "severity": "info",
+                "category": "costs",
+                "title": "Add ~12–13% on top of purchase price for transaction costs",
+                "detail": (
+                    "In the Comunitat Valenciana, resale property buyers pay: 10% transfer tax (ITP, flat rate), "
+                    "~1.5% notary + Land Registry, ~1% lawyer. "
+                    "This surprises most non-Spanish buyers who expect 5–7%."
                 ),
                 "action": "Budget for total transaction cost before making an offer, not after.",
             }]
@@ -527,6 +596,11 @@ def _transaction_costs(listing_price: float | None, prop_data: dict, city: str =
         itp_label = "6% ITP (Comunidad de Madrid)"
         location_label = "Madrid"
         overhead_note = "Most non-Spanish buyers underestimate this by €10,000–€20,000."
+    elif is_valencia:
+        itp = price * 0.10
+        itp_label = "10% ITP (Comunitat Valenciana, flat rate)"
+        location_label = "Valencian Community"
+        overhead_note = "Most non-Spanish buyers underestimate this by €15,000–€25,000."
     else:
         itp, _itp_lbl = _catalunya_itp_progressive(price)
         itp_rate = round(itp / price * 100, 1)
@@ -588,6 +662,13 @@ def _airbnb_situation(airbnb_data: dict, city: str = "barcelona") -> list[dict]:
             "Until then: rotating short-term neighbors, increased building wear, and potential "
             "community disputes. After 2028: this ends, which may improve residential quality "
             "but eliminates any rental income potential from tourist lets."
+        )
+    elif city == "valencia":
+        ban_text = (
+            "Valencia has no city-wide tourist rental ban (unlike Barcelona). "
+            "VUT (Vivienda de Uso Turístico) licenses are governed by Generalitat Valenciana — "
+            "check local urbanistic planning (PGOU Valencia) for restrictions in your specific zone. "
+            "Tourist concentration affects residential quality: rotating neighbors and building wear."
         )
     else:
         ban_text = (
@@ -974,6 +1055,10 @@ def _plusvalia_nonresident(
         filing_info = "Deadline: 30 working days from deed (Modelo 081, Ayuntamiento de Madrid — sede.madrid.es)."
         municipality = "Madrid"
         rate_pct = "29%"
+    elif city == "valencia":
+        filing_info = "Deadline: 30 working days from deed (Modelo 081, Ayuntamiento de Valencia — valencia.es)."
+        municipality = "Valencia"
+        rate_pct = "29.7%"
     else:
         filing_info = "Deadline: 30 working days from deed. File at the local Ayuntamiento."
         municipality = "the municipality"
@@ -1176,6 +1261,119 @@ def _madrid_itp_no_rent_control(user_answers=None) -> list[dict]:
             ),
         })
     return items
+
+
+def _dana_flood_risk_valencia(prop_data: dict) -> list[dict]:
+    """DANA November 2024 flood disclosure — shown to all Valencia buyers.
+
+    Life-safety and financial risk. PATRICOVA flood maps are being revised upward
+    after November 2024 killed 220+ people across 75 municipalities.
+    This is the most important Valencia-specific disclosure.
+    """
+    return [{
+        "id": "dana_flood_risk_valencia",
+        "severity": "red",
+        "category": "legal",
+        "title": "Valencia DANA flood risk: check PATRICOVA maps before buying — 220+ deaths Nov 2024",
+        "detail": (
+            "The November 2024 DANA storm killed 220+ people in Valencia province, "
+            "flooding 75 municipalities and destroying thousands of properties. "
+            "The Generalitat Valenciana's PATRICOVA flood risk maps (patricova.gva.es) are "
+            "being revised upward following the disaster — many areas previously classified "
+            "as low risk were severely flooded. "
+            "Some southern districts (Pobles del Sud, parts of Quatre Carreres, Alboraia, Paiporta, "
+            "Picanya) were directly affected. Insurance premiums are rising and some policies "
+            "are being withdrawn in flood-affected zones. "
+            "Banks may restrict or refuse mortgages on properties in high-risk PATRICOVA zones "
+            "post-2024 disaster review."
+        ),
+        "action": (
+            "Before signing: (1) Check the property's PATRICOVA zone classification at patricova.gva.es. "
+            "(2) Verify that current buildings insurance covers DANA-type flooding — Consorcio de Compensación "
+            "de Seguros (CCS) covers extraordinary catastrophes, but verify the process. "
+            "(3) Ask the seller for evidence the property was not flooded in November 2024. "
+            "(4) Check the municipal flood emergency plan (PEMU) at valencia.es. "
+            "(5) Confirm the bank will grant a mortgage on this property post-2024 risk reassessment."
+        ),
+    }]
+
+
+def _valencia_no_rent_control(user_answers=None) -> list[dict]:
+    """Valencia: no rent control (unlike Barcelona), no zona tensionada declared."""
+    rental_intent = getattr(user_answers, "rental_intent", None) if user_answers else None
+    if rental_intent not in ("long_term", "short_term"):
+        return []
+
+    if rental_intent == "short_term":
+        return [{
+            "id": "valencia_no_rent_control",
+            "severity": "info",
+            "category": "legal",
+            "title": "Valencia: tourist rentals permitted — VUT license required per Generalitat rules",
+            "detail": (
+                "Comunitat Valenciana has NOT implemented a tourist rental ban (unlike Barcelona's 2028 deadline). "
+                "VUT (Vivienda de Uso Turístico) licenses are managed by the Generalitat Valenciana — "
+                "properties must meet habitability and safety requirements. "
+                "Check the municipal urbanistic plan (PGOU Valencia) for any local restrictions. "
+                "No city-wide rent control applies to short or mid-term rentals."
+            ),
+            "action": (
+                "Register as a VUT tourist apartment with the Generalitat Valenciana (turisme.gva.es). "
+                "Check PGOU Valencia for any zone-specific restrictions on your property's use."
+            ),
+        }]
+
+    return [{
+        "id": "valencia_no_rent_control",
+        "severity": "green",
+        "category": "legal",
+        "title": "Valencia: no rent control — long-term rental income is unregulated",
+        "detail": (
+            "Comunitat Valenciana has NOT declared any zona tensionada under Ley 12/2023. "
+            "There are no rent control caps on new contracts, no IRAV index restriction, "
+            "and no SERPAVI reference ceiling applies in Valencia. "
+            "You can set market rents freely for long-term rentals."
+        ),
+        "action": (
+            "Verify that the property's urbanistic classification allows your intended rental model. "
+            "Short-term VUT rentals require Generalitat Valenciana registration."
+        ),
+    }]
+
+
+def _valencia_vpo_risk(prop_data: dict) -> list[dict]:
+    """Valencia VPO (Vivienda de Protección Oficial) risk — complex resale restrictions.
+
+    Valencia has significant protected housing stock. VPO properties have:
+    - Price caps on resale (often below market for 15-30 years)
+    - Right of first refusal by Generalitat Valenciana
+    - Cannot be rented at market rates
+    Some buyers are unaware they are buying a VPO property until the deed is signed.
+    """
+    year = prop_data.get("year_built")
+    if year and 1960 <= year <= 1990:
+        return [{
+            "id": "valencia_vpo_risk",
+            "severity": "yellow",
+            "category": "legal",
+            "title": "Verify this property is NOT protected housing (VPO) — resale restrictions may apply",
+            "detail": (
+                "Valencia has significant protected housing (VPO — Vivienda de Protección Oficial) "
+                "stock built between 1960 and 1990. VPO properties carry resale price caps "
+                "(often below market value), a right of first refusal by the Generalitat Valenciana, "
+                "and restrictions on rental income. "
+                f"This {year} building was constructed during the peak VPO construction era. "
+                "VPO status can persist for 15–30 years from first sale and is not always visible "
+                "on portal listings."
+            ),
+            "action": (
+                "Before signing: (1) Request the nota simple from the Land Registry (Registro de la Propiedad) "
+                "— VPO status appears in the property's encumbrances. "
+                "(2) Check with the Conselleria d'Habitatge de la Generalitat Valenciana. "
+                "(3) If it is VPO, obtain the exact expiry date of restrictions and maximum resale price."
+            ),
+        }]
+    return []
 
 
 def _energy_cert_upgrade(prop_data: dict, hidden_costs_data: dict) -> list[dict]:
