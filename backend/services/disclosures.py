@@ -512,7 +512,7 @@ def _transaction_costs(listing_price: float | None, prop_data: dict, city: str =
             "category": "costs",
             "title": "Add 12–14% on top of purchase price for transaction costs",
             "detail": (
-                "In Catalonia, resale property buyers pay: 10–12% transfer tax (ITP, progressive), "
+                "In Catalonia, resale property buyers pay: 10% transfer tax (ITP — flat 10% under €600k, then 11%/12%/13% above), "
                 "~1.5% notary + Land Registry, ~1% lawyer. "
                 "This surprises most non-Spanish buyers who expect 5–7%."
             ),
@@ -528,9 +528,10 @@ def _transaction_costs(listing_price: float | None, prop_data: dict, city: str =
         location_label = "Madrid"
         overhead_note = "Most non-Spanish buyers underestimate this by €10,000–€20,000."
     else:
-        itp, _ = _catalunya_itp_progressive(price)
+        itp, _itp_lbl = _catalunya_itp_progressive(price)
         itp_rate = round(itp / price * 100, 1)
-        itp_label = f"{itp_rate}% ITP (Catalunya, progressive 10–12%)"
+        # ≤€600k is flat 10%; only show "progressive" label when higher brackets apply
+        itp_label = _itp_lbl if price <= 600_000 else f"{itp_rate}% ITP (Catalunya, progressive 10–13%)"
         location_label = "Catalonia"
         overhead_note = "Most non-Spanish buyers underestimate this by €20,000–€40,000."
 
