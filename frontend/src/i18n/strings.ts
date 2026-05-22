@@ -3,16 +3,16 @@ export type Lang = 'en' | 'zh'
 const strings = {
   en: {
     nav: {
-      tagline: 'Barcelona · Know before you buy',
+      tagline: 'Barcelona & Madrid · Know before you buy',
       analyze: 'Analyse',
       compare: 'Compare',
       newAnalysis: '← New analysis',
     },
     hero: {
-      badge: 'Barcelona · Free Beta',
+      badge: 'Barcelona & Madrid · Free Beta',
       h1: 'Beyond the price tag.',
       h2: 'Know before you buy.',
-      sub: 'Enter any Barcelona address. Get the full picture — hidden costs, structural risks, noise, Airbnb pressure, fair value — in 60 seconds.',
+      sub: 'Enter any Barcelona or Madrid address. Get the full picture — hidden costs, structural risks, noise, Airbnb pressure, fair value — in 60 seconds.',
       tagline: "What estate agents don't tell you. What portals can't show you.",
       stats: [
         { n: '8',    label: 'Data sources' },
@@ -20,7 +20,7 @@ const strings = {
         { n: '60s',  label: 'Per report' },
         { n: '100%', label: 'Free to try' },
       ],
-      limit: '5 free analyses per day · No account required · Barcelona addresses only',
+      limit: '5 free analyses per day · No account required · Barcelona & Madrid',
     },
     loading: {
       title: 'Analysing property…',
@@ -33,13 +33,13 @@ const strings = {
       generic: 'Analysis failed. Please try again.',
     },
     footer: {
-      brand: 'Beyond Price — Barcelona Property Intelligence',
-      data: 'Data: Catastro · INE · OpenStreetMap · Area Verda · Inside Airbnb · Open Data BCN · AI: Claude',
+      brand: 'Beyond Price — Barcelona & Madrid Property Intelligence',
+      data: 'Data: Catastro · INE · OpenStreetMap · Inside Airbnb · Open Data BCN · AI: Claude',
       disclaimer: 'For informational purposes only. Not a substitute for professional legal or financial advice.',
     },
     form: {
       address: 'Property address',
-      addressPlaceholder: 'e.g. Carrer de Mallorca 401, Barcelona',
+      addressPlaceholder: 'e.g. Carrer de Mallorca 401, Barcelona or Calle Serrano 50, Madrid',
       addressHint: 'Use Spanish street format: Carrer/Calle + street name + number + city. Select a suggestion for best accuracy.',
       price: 'Listing price (€)',
       optional: 'optional',
@@ -470,16 +470,16 @@ const strings = {
   // ─── 中文 ───────────────────────────────────────────────────────────────────
   zh: {
     nav: {
-      tagline: '巴塞罗那 · 买前知真相',
+      tagline: '巴塞罗那 & 马德里 · 买前知真相',
       analyze: '分析',
       compare: '对比',
       newAnalysis: '← 重新分析',
     },
     hero: {
-      badge: '巴塞罗那 · 免费公测',
+      badge: '巴塞罗那 & 马德里 · 免费公测',
       h1: '价格之外的真相。',
       h2: '买前，先知道这些。',
-      sub: '输入任意巴塞罗那地址，60秒内获取完整报告——隐性成本、结构风险、噪音、Airbnb压力、公允价值，一目了然。',
+      sub: '输入巴塞罗那或马德里任意地址，60秒内获取完整报告——隐性成本、结构风险、噪音、Airbnb压力、公允价值，一目了然。',
       tagline: '房产中介不会告诉你的。房产平台展示不了的。',
       stats: [
         { n: '8',    label: '数据来源' },
@@ -487,7 +487,7 @@ const strings = {
         { n: '60秒', label: '生成时间' },
         { n: '100%', label: '完全免费' },
       ],
-      limit: '每天5次免费分析 · 无需注册账号 · 仅限巴塞罗那地址',
+      limit: '每天5次免费分析 · 无需注册账号 · 支持巴塞罗那 & 马德里',
     },
     loading: {
       title: '正在分析房产……',
@@ -500,13 +500,13 @@ const strings = {
       generic: '分析失败，请重试。',
     },
     footer: {
-      brand: 'Beyond Price — 巴塞罗那房产情报',
-      data: '数据来源：地籍局 · INE · OpenStreetMap · Area Verda · Inside Airbnb · 巴塞罗那开放数据 · AI：Claude',
+      brand: 'Beyond Price — 巴塞罗那 & 马德里房产情报',
+      data: '数据来源：地籍局 · INE · OpenStreetMap · Inside Airbnb · 开放数据 · AI：Claude',
       disclaimer: '仅供参考，不构成法律或财务建议，签约前请咨询专业律师。',
     },
     form: {
       address: '房产地址',
-      addressPlaceholder: '例如：Carrer de Mallorca 401, Barcelona',
+      addressPlaceholder: '例如：Carrer de Mallorca 401, Barcelona 或 Calle Serrano 50, Madrid',
       addressHint: '请使用西班牙街道格式：Carrer/Calle + 街道名 + 门牌号 + 城市。从建议列表中选择以确保准确性。',
       price: '挂牌价格（€）',
       optional: '选填',
