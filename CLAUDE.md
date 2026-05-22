@@ -34,7 +34,7 @@ Any non-trivial change (new endpoint, new component, data model change) requires
 4. **Financial calculations — verify with real numbers**: `minimum_cash_required = price + total` was wrong when a mortgage was provided. The correct formula is `(price - mortgage) + total`. Always run the formula with a concrete example: €450k price, €315k mortgage → should need €185k cash, not €500k.
 
 5. **Tax law accuracy**: Never trust fast estimates for tax rates. Verify against official sources:
-   - Catalonia ITP: progressive 10/11/12% (not flat 10%)
+   - Catalonia ITP: flat 10% up to €600k, then progressive 11%/12%/13% (DL5/2025 per atc.gencat.cat)
    - Madrid AJD: 0.75% (not 0.7%)
    - IRNR: multiply imputed income BASE (1.1%) by the TAX RATE (19%) — the actual tax is ~0.2% of cadastral, not 1.1%
 
@@ -172,7 +172,7 @@ Railway's reverse proxy kills slow requests (>30s) **without** adding CORS heade
 7. Add safety data source or leave null (safe degradation)
 
 ### Tax law accuracy (verified 2026-05-22)
-- Catalunya ITP: progressive 10/11/12% per DL5/2025 (≤€200k / ≤€600k / >€600k)
+- Catalunya ITP: flat 10% (≤€600k) | 11% (€600k–€900k) | 12% (€900k–€1.5M) | 13% (>€1.5M) per DL5/2025
 - Madrid ITP: flat 6% (Comunidad de Madrid)
 - Catalunya AJD (new build): 1.5%
 - Madrid AJD (new build): 0.75%
