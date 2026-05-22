@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 1200px; height: 627px; overflow: hidden;
+         font-family: 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif; }
+
+  .bg {
+    width: 100%; height: 100%;
+    background: linear-gradient(135deg, #1C1917 0%, #292524 60%, #1C1917 100%);
+    position: relative; display: flex; align-items: center;
+    padding: 64px 80px; gap: 80px;
+  }
+  .bg::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image: radial-gradient(circle, rgba(198,124,58,0.08) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+
+  .left { flex: 1; position: relative; z-index: 1; }
+
+  .badge {
+    display: inline-block; border: 1px solid #C67C3A; color: #C67C3A;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.12em;
+    text-transform: uppercase; padding: 5px 14px; border-radius: 100px; margin-bottom: 28px;
+  }
+
+  h1 { font-size: 54px; font-weight: 700; line-height: 1.15; color: #FAFAF8; margin-bottom: 8px; letter-spacing: -0.01em; }
+  h1 em { color: #C67C3A; font-style: normal; }
+
+  .sub { font-size: 17px; color: #A8A29E; margin-top: 20px; line-height: 1.6; max-width: 400px; }
+
+  .url {
+    font-size: 13px; color: #C67C3A; margin-top: 36px; letter-spacing: 0.02em;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .url-dot { width: 6px; height: 6px; background: #C67C3A; border-radius: 50%; }
+
+  .right {
+    position: relative; z-index: 1; display: flex; flex-direction: column;
+    gap: 10px; min-width: 390px;
+  }
+
+  .pill {
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px; padding: 12px 18px; display: flex; align-items: flex-start; gap: 14px;
+  }
+  .pill-icon { font-size: 18px; width: 28px; text-align: center; flex-shrink: 0; margin-top: 1px; }
+  .pill-text { font-size: 14px; color: #D6D3D1; line-height: 1.45; }
+  .pill-text strong { color: #fff; font-weight: 600; }
+
+  .accent-bar {
+    position: absolute; left: 0; top: 40px; bottom: 40px; width: 3px;
+    background: linear-gradient(to bottom, transparent, #C67C3A 30%, #C67C3A 70%, transparent);
+    border-radius: 0 2px 2px 0;
+  }
+</style>
+</head>
+<body>
+<div class="bg">
+  <div class="accent-bar"></div>
+  <div class="left">
+    <div class="badge">巴塞罗那 · 免费公测</div>
+    <h1>价格之外，<br/>还有<em>你不知道</em>的。</h1>
+    <p class="sub">中介不会说、平台不会写的那些事，60秒全告诉你。</p>
+    <div class="url">
+      <div class="url-dot"></div>
+      hsproperty-analysis.vercel.app
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="pill"><span class="pill-icon">⚠️</span><span class="pill-text"><strong>结构风险</strong> — 铝水泥、石棉年代，ITE检查状态</span></div>
+    <div class="pill"><span class="pill-icon">💸</span><span class="pill-text"><strong>隐性持有成本</strong> — IBI税、物业费、维修摊派、节能改造</span></div>
+    <div class="pill"><span class="pill-icon">🔇</span><span class="pill-text"><strong>凌晨1点有多吵</strong> — 500米内酒吧、夜店数量评分</span></div>
+    <div class="pill"><span class="pill-icon">🏖️</span><span class="pill-text"><strong>Airbnb饱和度</strong> — 本楼及街区旅游公寓比例</span></div>
+    <div class="pill"><span class="pill-icon">💰</span><span class="pill-text"><strong>公允价值</strong> — 挂牌价 vs INE片区中位数，偏贵多少%</span></div>
+    <div class="pill"><span class="pill-icon">📈</span><span class="pill-text"><strong>街区发展趋势</strong> — 上升中、稳定、还是下行？</span></div>
+  </div>
+</div>
+</body>
+</html>

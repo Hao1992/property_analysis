@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1080px; height: 1080px; overflow: hidden;
+    font-family: 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+    background: #F0EDE8;
+  }
+
+  .wrap { width: 100%; height: 100%; padding: 38px 44px; display: flex; flex-direction: column; gap: 14px; }
+
+  .topbar { display: flex; align-items: center; justify-content: space-between; }
+  .brand { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: #1C1917; }
+  .brand em { color: #C67C3A; font-style: italic; }
+  .badge { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: #C67C3A;
+           border: 1px solid #C67C3A; border-radius: 100px; padding: 4px 14px; }
+
+  .address-bar {
+    background: #fff; border: 1px solid #E8E0D5; border-radius: 12px; padding: 11px 18px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .addr-label { font-size: 10px; color: #A8A29E; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .addr-text  { font-size: 14px; font-weight: 600; color: #1C1917; }
+  .score-chip { font-family: 'Playfair Display', serif; font-size: 30px; font-weight: 700; color: #C67C3A;
+                display: flex; align-items: baseline; gap: 4px; }
+  .score-chip span { font-family: 'PingFang SC', sans-serif; font-size: 13px; color: #A8A29E; font-weight: 400; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; flex: 1; }
+
+  .card { background: #fff; border: 1px solid #E8E0D5; border-radius: 14px; padding: 16px 18px; }
+  .card-label { font-size: 9px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #C67C3A; margin-bottom: 3px; }
+  .card-title { font-size: 14px; font-weight: 600; color: #1C1917; margin-bottom: 12px; }
+
+  .disc { border-radius: 9px; padding: 10px 13px; margin-bottom: 7px; display: flex; gap: 9px; align-items: flex-start; }
+  .disc.red    { background:#fff; border:1px solid #FECACA; border-left:4px solid #DC2626; }
+  .disc.yellow { background:#fff; border:1px solid #FDE68A; border-left:4px solid #D97706; }
+  .disc.green  { background:#fff; border:1px solid #BBF7D0; border-left:4px solid #16A34A; }
+  .disc-icon { width:21px; height:21px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+               font-size:10px; font-weight:700; flex-shrink:0; margin-top:1px; }
+  .disc.red    .disc-icon { background:#FEE2E2; color:#DC2626; }
+  .disc.yellow .disc-icon { background:#FEF3C7; color:#D97706; }
+  .disc.green  .disc-icon { background:#D1FAE5; color:#16A34A; }
+  .disc-title { font-size: 12px; font-weight: 600; color: #1C1917; margin-bottom: 2px; }
+  .disc-sub   { font-size: 10.5px; color: #78716C; line-height: 1.45; }
+
+  .bar-row { margin-bottom: 10px; }
+  .bar-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .bar-label { font-size: 12px; color: #57534E; }
+  .bar-val   { font-size: 12px; font-weight: 600; }
+  .bar-track { height: 6px; background: #F5F0EB; border-radius: 10px; overflow: hidden; }
+  .bar-fill  { height: 100%; border-radius: 10px; }
+  .green-val { color: #16A34A; } .amber-val { color: #D97706; } .red-val { color: #DC2626; }
+  .green-bar { background: #22C55E; } .amber-bar { background: #F59E0B; } .red-bar { background: #EF4444; }
+
+  .cost-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+  .cost-item { background: #FAFAF8; border: 1px solid #E8E0D5; border-radius: 9px; padding: 9px 11px; }
+  .cost-item-label { font-size: 10px; color: #A8A29E; margin-bottom: 2px; }
+  .cost-item-val   { font-size: 15px; font-weight: 700; color: #1C1917; font-family: 'Playfair Display', serif; }
+  .cost-item-sub   { font-size: 10px; color: #A8A29E; }
+
+  .total-bar {
+    background: #1C1917; border-radius: 9px; padding: 11px 15px; margin-top: 10px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .total-label { font-size: 11px; color: #A8A29E; }
+  .total-val   { font-size: 20px; font-weight: 700; color: #C67C3A; font-family: 'Playfair Display', serif; }
+
+  .airbnb-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; }
+  .airbnb-stat { background: #FEF2F2; border-radius: 8px; padding: 8px; text-align: center; }
+  .airbnb-stat-val { font-size: 17px; font-weight: 700; color: #DC2626; font-family: 'Playfair Display', serif; }
+  .airbnb-stat-label { font-size: 10px; color: #7F1D1D; }
+
+  .val-row { display: flex; gap: 10px; margin-bottom: 10px; }
+  .val-box { flex: 1; background: #FAFAF8; border: 1px solid #E8E0D5; border-radius: 9px; padding: 9px 11px; text-align: center; }
+  .val-box.hl { background: #FFF7ED; border-color: #FDBA74; }
+  .val-box-label { font-size: 10px; color: #A8A29E; margin-bottom: 2px; }
+  .val-box-val   { font-size: 15px; font-weight: 700; font-family: 'Playfair Display', serif; color: #1C1917; }
+  .val-box.hl .val-box-val { color: #C67C3A; }
+  .warn-badge { background: #FEF3C7; border: 1px solid #FDE68A; border-radius: 7px;
+                padding: 7px 10px; font-size: 11px; color: #92400E; line-height: 1.4; }
+
+  .foot { text-align: center; font-size: 11px; color: #A8A29E; padding-top: 8px; border-top: 1px solid #E8E0D5; }
+  .foot strong { color: #C67C3A; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div class="brand">Beyond <em>Price</em></div>
+    <div class="badge">报告示例 · 巴塞罗那</div>
+  </div>
+
+  <div class="address-bar">
+    <div>
+      <div class="addr-label">分析地址</div>
+      <div class="addr-text">Carrer de Mallorca 401, Eixample, Barcelona</div>
+    </div>
+    <div class="score-chip">72 <span>/100</span></div>
+  </div>
+
+  <div class="grid">
+    <!-- 购房前必读 -->
+    <div class="card">
+      <div class="card-label">购房前必读</div>
+      <div class="card-title">签约前需了解的4件事</div>
+
+      <div class="disc red">
+        <div class="disc-icon">⚠</div>
+        <div>
+          <div class="disc-title">建于1969年：铝水泥高风险楼</div>
+          <div class="disc-sub">1960–1975年建筑常用铝水泥，签订定金前务必委托结构检测</div>
+        </div>
+      </div>
+      <div class="disc yellow">
+        <div class="disc-icon">!</div>
+        <div>
+          <div class="disc-title">Airbnb饱和度高</div>
+          <div class="disc-sub">估算38%单元为旅游公寓，影响业主大会决议与楼栋噪音</div>
+        </div>
+      </div>
+      <div class="disc yellow">
+        <div class="disc-icon">!</div>
+        <div>
+          <div class="disc-title">2033年节能改造强制令</div>
+          <div class="disc-sub">能耗证书E级，估算改造费用€12,000–€22,000</div>
+        </div>
+      </div>
+      <div class="disc green">
+        <div class="disc-icon">✓</div>
+        <div>
+          <div class="disc-title">交通极佳——4条地铁线</div>
+          <div class="disc-sub">L2、L3、L4、L5均在350米内，便利度评分 91/100</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 隐性持有成本 -->
+    <div class="card">
+      <div class="card-label">持有成本</div>
+      <div class="card-title">隐性月度费用明细</div>
+      <div class="cost-grid">
+        <div class="cost-item">
+          <div class="cost-item-label">IBI 房产税</div>
+          <div class="cost-item-val">€142</div>
+          <div class="cost-item-sub">月均摊</div>
+        </div>
+        <div class="cost-item">
+          <div class="cost-item-label">物业管理费</div>
+          <div class="cost-item-val">€95</div>
+          <div class="cost-item-sub">楼宇维护</div>
+        </div>
+        <div class="cost-item">
+          <div class="cost-item-label">水电燃气估算</div>
+          <div class="cost-item-val">€130</div>
+          <div class="cost-item-sub">电、水、天然气</div>
+        </div>
+        <div class="cost-item" style="background:#FEF3C7;border-color:#FDE68A;">
+          <div class="cost-item-label" style="color:#92400E;">维修摊派储备</div>
+          <div class="cost-item-val" style="color:#D97706;">€60</div>
+          <div class="cost-item-sub" style="color:#92400E;">风险：中等</div>
+        </div>
+      </div>
+      <div class="total-bar">
+        <span class="total-label">月度总计（不含房贷）</span>
+        <span class="total-val">€427</span>
+      </div>
+    </div>
+
+    <!-- 噪音与治安 -->
+    <div class="card">
+      <div class="card-label">宜居评估</div>
+      <div class="card-title">噪音与治安评分</div>
+
+      <div class="bar-row">
+        <div class="bar-head"><span class="bar-label">白天噪音</span><span class="bar-val green-val">88/100</span></div>
+        <div class="bar-track"><div class="bar-fill green-bar" style="width:88%"></div></div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-head"><span class="bar-label">夜间噪音（酒吧与夜店）</span><span class="bar-val amber-val">52/100</span></div>
+        <div class="bar-track"><div class="bar-fill amber-bar" style="width:52%"></div></div>
+      </div>
+      <div style="font-size:11px;color:#78716C;margin-bottom:12px;">500米内有20家酒吧/夜店，建议夜间实地考察</div>
+
+      <div class="bar-row">
+        <div class="bar-head"><span class="bar-label">盗窃率</span><span class="bar-val amber-val">58/100</span></div>
+        <div class="bar-track"><div class="bar-fill amber-bar" style="width:58%"></div></div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-head"><span class="bar-label">夜间安全</span><span class="bar-val amber-val">61/100</span></div>
+        <div class="bar-track"><div class="bar-fill amber-bar" style="width:61%"></div></div>
+      </div>
+      <div style="font-size:11px;color:#A8A29E;margin-top:3px;">Eixample区 · 2024年巴塞罗那开放数据</div>
+    </div>
+
+    <!-- Airbnb与估值 -->
+    <div class="card">
+      <div class="card-label">市场情报</div>
+      <div class="card-title">Airbnb压力 &amp; 公允价值</div>
+
+      <div class="airbnb-stats">
+        <div class="airbnb-stat">
+          <div class="airbnb-stat-val">38%</div>
+          <div class="airbnb-stat-label">本楼估算</div>
+        </div>
+        <div class="airbnb-stat">
+          <div class="airbnb-stat-val">14</div>
+          <div class="airbnb-stat-label">100米内</div>
+        </div>
+        <div class="airbnb-stat">
+          <div class="airbnb-stat-val">183</div>
+          <div class="airbnb-stat-label">500米内</div>
+        </div>
+      </div>
+      <div style="font-size:10.5px;background:#FEF2F2;border-radius:7px;padding:7px 10px;color:#7F1D1D;margin-bottom:10px;">
+        ⚠ 所有旅游公寓牌照将于2028年11月到期，签约前核实楼规
+      </div>
+
+      <div class="val-row">
+        <div class="val-box">
+          <div class="val-box-label">公允价值</div>
+          <div class="val-box-val">€412,000</div>
+        </div>
+        <div class="val-box hl">
+          <div class="val-box-label">挂牌价格</div>
+          <div class="val-box-val">€468,000</div>
+        </div>
+      </div>
+      <div class="warn-badge">
+        <strong>🟡 挂牌价高出公允价值 13.6%</strong>——建议从 €412K 开始谈
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <strong>hsproperty-analysis.vercel.app</strong> · 免费公测 · 仅限巴塞罗那地址 · 每天5次
+  </div>
+</div>
+</body>
+</html>

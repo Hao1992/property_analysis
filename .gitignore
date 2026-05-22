@@ -25,3 +25,10 @@ frontend/.vite/
 poetry.lock
 .vercel
 .gstack/
+
+# Claude Code internal files
+scheduled_tasks.lock
+.claude/
+
+# Telegram temp files
+tg_status.txt

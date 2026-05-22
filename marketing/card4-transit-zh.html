@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1080px; height: 1080px; overflow: hidden;
+    font-family: 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+    background: #F0EDE8;
+  }
+
+  .wrap { width: 100%; height: 100%; padding: 42px 46px; display: flex; flex-direction: column; gap: 18px; }
+
+  .topbar { display: flex; align-items: center; justify-content: space-between; }
+  .brand { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: #1C1917; }
+  .brand em { color: #C67C3A; font-style: italic; }
+  .badge { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: #C67C3A;
+           border: 1px solid #C67C3A; border-radius: 100px; padding: 4px 14px; }
+
+  .headline { }
+  .hl-label { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #C67C3A; margin-bottom: 8px; }
+  .hl-title { font-size: 34px; font-weight: 700; color: #1C1917; line-height: 1.2; }
+  .hl-title em { color: #C67C3A; font-style: normal; }
+  .hl-sub { font-size: 14px; color: #78716C; margin-top: 8px; }
+
+  .cols { display: grid; grid-template-columns: 1fr 1.1fr; gap: 14px; flex: 1; min-height: 0; }
+
+  .panel { background: #fff; border: 1px solid #E8E0D5; border-radius: 16px; padding: 18px 20px;
+           display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
+  .panel-label { font-size: 9px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #C67C3A; }
+  .panel-title { font-size: 14px; font-weight: 600; color: #1C1917; margin-top: 1px; }
+
+  .metro-item { display: flex; align-items: center; gap: 11px; padding: 9px 11px;
+                background: #FAFAF8; border: 1px solid #E8E0D5; border-radius: 10px; }
+  .metro-dot { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center;
+               justify-content: center; font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0; }
+  .metro-name { font-size: 13px; font-weight: 600; color: #1C1917; }
+  .metro-dist { font-size: 11px; color: #A8A29E; }
+  .metro-badges { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 2px; }
+  .line-badge { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 100px; color: #fff; }
+
+  .bus-header { font-size: 12px; font-weight: 600; color: #57534E; display: flex; align-items: center; gap: 6px; }
+  .bus-routes-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+  .bus-chip { display: flex; align-items: center; gap: 5px; background: #FAFAF8; border: 1px solid #E8E0D5;
+              border-radius: 8px; padding: 5px 10px; }
+  .bus-chip.active { background: #FFF7ED; border-color: #C67C3A; }
+  .bus-num { font-size: 12px; font-weight: 700; color: #1C1917; font-family: monospace; }
+  .bus-chip.active .bus-num { color: #C67C3A; }
+  .bus-dest { font-size: 10px; color: #78716C; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .hint-box { background: #FFF7ED; border: 1px solid #FDE68A; border-radius: 10px; padding: 10px 13px; }
+  .hint-title { font-size: 11px; font-weight: 700; color: #92400E; margin-bottom: 3px; }
+  .hint-text  { font-size: 11px; color: #78716C; line-height: 1.45; }
+
+  /* Route detail panel */
+  .route-panel { background: #1C1917; border-radius: 16px; padding: 18px 20px;
+                 display: flex; flex-direction: column; overflow: hidden; }
+  .route-header { margin-bottom: 14px; }
+  .route-label { font-size: 9px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #C67C3A; margin-bottom: 5px; }
+  .route-title-row { display: flex; align-items: center; gap: 10px; }
+  .route-num-big { font-size: 20px; font-weight: 700; color: #1C1917; background: #C67C3A;
+                   border-radius: 8px; padding: 4px 12px; font-family: monospace; }
+  .route-title { font-size: 13px; font-weight: 600; color: #FAFAF8; }
+  .route-sub   { font-size: 10px; color: #78716C; margin-top: 2px; }
+
+  .route-stats { display: flex; gap: 10px; margin-top: 9px; }
+  .route-stat { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+                border-radius: 7px; padding: 5px 11px; }
+  .route-stat-val   { font-size: 13px; font-weight: 700; color: #fff; }
+  .route-stat-label { font-size: 9px; color: #78716C; }
+
+  .stops { flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 0; }
+  .stop-row { display: flex; align-items: flex-start; gap: 0; position: relative; }
+  .track { width: 34px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; position: relative; padding-top: 5px; }
+  .track-dot { width: 11px; height: 11px; border-radius: 50%; z-index: 1; flex-shrink: 0;
+               border: 2px solid #C67C3A; background: #1C1917; }
+  .track-dot.here { background: #C67C3A; width: 15px; height: 15px; border: 2.5px solid #fff; }
+  .track-dot.interchange { background: #fff; border-color: #fff; }
+  .track-dot.muted { border-color: #3D3530; background: #3D3530; }
+  .track-line { position: absolute; top: 17px; bottom: -5px; left: 50%; width: 2px;
+                background: rgba(198,124,58,0.3); transform: translateX(-50%); }
+  .stop-row:last-child .track-line { display: none; }
+  .stop-content { flex: 1; padding: 5px 0 9px 5px; }
+  .stop-name { font-size: 13px; font-weight: 600; color: #FAFAF8; }
+  .stop-name.here { color: #C67C3A; }
+  .stop-name.muted { font-size: 12px; font-weight: 500; color: #57534E; }
+  .stop-chips { display: flex; gap: 4px; margin-top: 3px; flex-wrap: wrap; }
+  .stop-chip { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 100px; color: #fff; }
+  .here-pill { font-size: 9px; font-weight: 700; color: #C67C3A; border: 1px solid #C67C3A;
+               border-radius: 100px; padding: 1px 7px; margin-left: 4px; vertical-align: middle; }
+
+  .foot { text-align: center; font-size: 11px; color: #A8A29E; padding-top: 7px; border-top: 1px solid #E8E0D5; }
+  .foot strong { color: #C67C3A; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div class="brand">Beyond <em>Price</em></div>
+    <div class="badge">交通情报 · 巴塞罗那</div>
+  </div>
+
+  <div class="headline">
+    <div class="hl-label">独家功能</div>
+    <div class="hl-title">每个站点，每条换乘，<br/><em>不只告诉你最近的站。</em></div>
+    <div class="hl-sub">点击任意线路号 → 查看完整路线、全部站点和换乘信息。</div>
+  </div>
+
+  <div class="cols">
+    <!-- 左侧：交通总览 -->
+    <div class="panel">
+      <div>
+        <div class="panel-label">公共交通</div>
+        <div class="panel-title">附近地铁 &amp; 公交</div>
+      </div>
+
+      <div class="metro-item">
+        <div class="metro-dot" style="background:#EF4444;">M</div>
+        <div style="flex:1;min-width:0;">
+          <div class="metro-name">Sagrada Família</div>
+          <div class="metro-dist">210米</div>
+          <div class="metro-badges">
+            <span class="line-badge" style="background:#EF4444;">L2</span>
+            <span class="line-badge" style="background:#009944;">L5</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="metro-item">
+        <div class="metro-dot" style="background:#009944;">M</div>
+        <div style="flex:1;min-width:0;">
+          <div class="metro-name">Verdaguer</div>
+          <div class="metro-dist">340米</div>
+          <div class="metro-badges">
+            <span class="line-badge" style="background:#0070B8;">L4</span>
+            <span class="line-badge" style="background:#009944;">L5</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="bus-header" style="margin-bottom:8px;">🚌 500米内公交线路</div>
+        <div class="bus-routes-grid">
+          <div class="bus-chip active">
+            <span class="bus-num">H8</span>
+            <span class="bus-dest">Barceloneta ↔ Zona Alta</span>
+          </div>
+          <div class="bus-chip">
+            <span class="bus-num">V17</span>
+            <span class="bus-dest">Tibidabo ↔ Poblenou</span>
+          </div>
+          <div class="bus-chip">
+            <span class="bus-num">19</span>
+            <span class="bus-dest">Pg. Gràcia ↔ Verneda</span>
+          </div>
+          <div class="bus-chip">
+            <span class="bus-num">33</span>
+            <span class="bus-dest">Zona Univ. ↔ Trinitat</span>
+          </div>
+          <div class="bus-chip">
+            <span class="bus-num">N8</span>
+            <span class="bus-dest">Catalunya ↔ Gavà（夜班）</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="hint-box">
+        <div class="hint-title">👆 点击任意线路查看完整路线</div>
+        <div class="hint-text">查看所有站点、换乘点和连接线路——清楚知道从这个地址能去哪里。</div>
+      </div>
+    </div>
+
+    <!-- 右侧：H8路线详情 -->
+    <div class="route-panel">
+      <div class="route-header">
+        <div class="route-label">路线详情 — 点击查看</div>
+        <div class="route-title-row">
+          <div class="route-num-big">H8</div>
+          <div>
+            <div class="route-title">Barceloneta ↔ Zona Alta</div>
+            <div class="route-sub">横向公交线 · 运营时间 05:00–23:00</div>
+          </div>
+        </div>
+        <div class="route-stats">
+          <div class="route-stat"><div class="route-stat-val">23</div><div class="route-stat-label">全程站数</div></div>
+          <div class="route-stat"><div class="route-stat-val">4</div><div class="route-stat-label">地铁换乘</div></div>
+          <div class="route-stat"><div class="route-stat-val">约34分钟</div><div class="route-stat-label">全程时长</div></div>
+        </div>
+      </div>
+
+      <div class="stops">
+        <div class="stop-row">
+          <div class="track"><div class="track-dot muted"></div><div class="track-line"></div></div>
+          <div class="stop-content"><div class="stop-name muted">Barceloneta / Pg. Joan de Borbó</div></div>
+        </div>
+        <div class="stop-row">
+          <div class="track"><div class="track-dot interchange"></div><div class="track-line"></div></div>
+          <div class="stop-content">
+            <div class="stop-name">Arc de Triomf</div>
+            <div class="stop-chips">
+              <span class="stop-chip" style="background:#EF4444;">L1</span>
+              <span class="stop-chip" style="background:#888;">R3 R4</span>
+            </div>
+          </div>
+        </div>
+        <div class="stop-row">
+          <div class="track"><div class="track-dot interchange"></div><div class="track-line"></div></div>
+          <div class="stop-content">
+            <div class="stop-name">Pg. de Gràcia / Aragó</div>
+            <div class="stop-chips">
+              <span class="stop-chip" style="background:#009944;">L2</span>
+              <span class="stop-chip" style="background:#EF4444;">L3</span>
+              <span class="stop-chip" style="background:#FACC15;color:#1C1917;">L4</span>
+            </div>
+          </div>
+        </div>
+        <div class="stop-row">
+          <div class="track"><div class="track-dot here"></div><div class="track-line"></div></div>
+          <div class="stop-content">
+            <div class="stop-name here">Mallorca / Av. Gaudí <span class="here-pill">你的站</span></div>
+            <div style="font-size:10px;color:#C67C3A;margin-top:2px;">距房产仅90米</div>
+          </div>
+        </div>
+        <div class="stop-row">
+          <div class="track"><div class="track-dot interchange"></div><div class="track-line"></div></div>
+          <div class="stop-content">
+            <div class="stop-name">Diagonal / Enric Granados</div>
+            <div class="stop-chips">
+              <span class="stop-chip" style="background:#009944;">L3</span>
+              <span class="stop-chip" style="background:#0070B8;">L5</span>
+            </div>
+          </div>
+        </div>
+        <div class="stop-row">
+          <div class="track"><div class="track-dot interchange"></div><div class="track-line"></div></div>
+          <div class="stop-content">
+            <div class="stop-name">Gràcia / Balmes</div>
+            <div class="stop-chips"><span class="stop-chip" style="background:#009944;">L3</span></div>
+          </div>
+        </div>
+        <div class="stop-row">
+          <div class="track"><div class="track-dot"></div><div class="track-line"></div></div>
+          <div class="stop-content"><div class="stop-name">Sarrià</div></div>
+        </div>
+        <div class="stop-row">
+          <div class="track"><div class="track-dot muted"></div></div>
+          <div class="stop-content"><div class="stop-name muted">Zona Alta / 终点站</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <strong>hsproperty-analysis.vercel.app</strong> · 免费公测 · 仅限巴塞罗那地址 · 每天5次
+  </div>
+</div>
+</body>
+</html>

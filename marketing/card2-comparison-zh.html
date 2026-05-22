@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 1080px; height: 1080px; overflow: hidden;
+         font-family: 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif; background: #FAFAF8; }
+
+  .wrap { width: 100%; height: 100%; padding: 56px 60px; display: flex; flex-direction: column; background: #FAFAF8; }
+
+  .top-label { font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #C67C3A; margin-bottom: 14px; }
+
+  h2 { font-size: 40px; font-weight: 700; color: #1C1917; line-height: 1.2; margin-bottom: 44px; }
+  h2 em { color: #C67C3A; font-style: normal; }
+
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; flex: 1; }
+
+  .col-head {
+    font-size: 12px; font-weight: 700; letter-spacing: 0.06em;
+    padding: 11px 18px; border-radius: 10px; margin-bottom: 14px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .col-head.bad  { background: #FEF2F2; color: #991B1B; }
+  .col-head.good { background: #FFF7ED; color: #92400E; }
+  .col-head .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .bad .dot  { background: #EF4444; }
+  .good .dot { background: #C67C3A; }
+
+  .item { display: flex; align-items: flex-start; gap: 11px; padding: 13px 15px; border-radius: 10px; margin-bottom: 8px; }
+  .item.bad  { background: #FEF2F2; }
+  .item.good { background: #fff; border: 1px solid #E8E0D5; }
+  .item-icon { font-size: 19px; flex-shrink: 0; line-height: 1.3; }
+  .item-text { font-size: 14px; line-height: 1.5; }
+  .item.bad  .item-text { color: #7F1D1D; }
+  .item.good .item-text { color: #1C1917; }
+  .item.good .item-text strong { color: #C67C3A; font-weight: 600; }
+
+  .footer { margin-top: 28px; padding-top: 18px; border-top: 1px solid #E8E0D5;
+            display: flex; align-items: center; justify-content: space-between; }
+  .brand { font-size: 18px; font-weight: 700; color: #1C1917; }
+  .brand span { color: #C67C3A; }
+  .foot-url { font-size: 12px; color: #A8A29E; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top-label">Beyond Price · 巴塞罗那房产情报</div>
+  <h2>房产平台告诉你什么，<br/>你<em>真正需要知道</em>什么。</h2>
+
+  <div class="cols">
+    <div>
+      <div class="col-head bad"><div class="dot"></div>Idealista · Habitaclia · Fotocasa</div>
+      <div class="item bad"><span class="item-icon">📸</span><span class="item-text">照片和户型图</span></div>
+      <div class="item bad"><span class="item-icon">💶</span><span class="item-text">挂牌价格</span></div>
+      <div class="item bad"><span class="item-icon">📐</span><span class="item-text">建筑面积（如果有填的话）</span></div>
+      <div class="item bad"><span class="item-icon">📍</span><span class="item-text">大概位置</span></div>
+      <div class="item bad"><span class="item-icon">🚫</span><span class="item-text">没有结构风险信息</span></div>
+      <div class="item bad"><span class="item-icon">🚫</span><span class="item-text">没有隐性成本明细</span></div>
+      <div class="item bad"><span class="item-icon">🚫</span><span class="item-text">没有噪音和旅游公寓数据</span></div>
+    </div>
+
+    <div>
+      <div class="col-head good"><div class="dot"></div>Beyond Price 帮你看清</div>
+      <div class="item good"><span class="item-icon">⚠️</span><span class="item-text"><strong>铝水泥风险年代</strong> — 这栋楼建造年份的结构隐患</span></div>
+      <div class="item good"><span class="item-icon">💸</span><span class="item-text"><strong>真实月度隐性费用</strong> — IBI税、物业费、摊派、节能改造</span></div>
+      <div class="item good"><span class="item-icon">💰</span><span class="item-text"><strong>公允价值 vs INE中位数</strong> — 贵了还是便宜了？</span></div>
+      <div class="item good"><span class="item-icon">🔇</span><span class="item-text"><strong>夜间噪音评分</strong> — 500米内酒吧和夜店数据</span></div>
+      <div class="item good"><span class="item-icon">🏖️</span><span class="item-text"><strong>Airbnb饱和度</strong> — 本楼和街区旅游公寓比例</span></div>
+      <div class="item good"><span class="item-icon">📈</span><span class="item-text"><strong>街区发展走向</strong> — 上升、稳定还是下行？</span></div>
+      <div class="item good"><span class="item-icon">🏫</span><span class="item-text"><strong>学校质量分级</strong> — 公立、协议学校、私立各自评分</span></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="brand">Beyond <span>Price</span></div>
+    <div class="foot-url">hsproperty-analysis.vercel.app · 免费公测 · 仅限巴塞罗那</div>
+  </div>
+</div>
+</body>
+</html>
