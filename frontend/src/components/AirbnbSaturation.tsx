@@ -67,8 +67,8 @@ export default function AirbnbSaturation({ data }: Props) {
       )}
 
       <SourceBadge sources={[
-        { label: 'Inside Airbnb', url: 'http://insideairbnb.com/barcelona/', note: isDistrictFallback ? 'district-level estimate (live data unavailable)' : 'active listings' },
-        { label: 'Barcelona 2028 ban', url: 'https://www.idealista.com/en/news/property-for-rent-in-spain/2025/06/12/848193-goodbye-airbnb-barcelona-sets-2028-deadline-to-phase-out-tourist-apartments' },
+        { label: 'Inside Airbnb', url: 'http://insideairbnb.com/spain/', note: isDistrictFallback ? 'district-level estimate' : 'active listings' },
+        ...(!isDistrictFallback ? [{ label: 'Barcelona 2028 ban', url: 'https://www.idealista.com/en/news/property-for-rent-in-spain/2025/06/12/848193-goodbye-airbnb-barcelona-sets-2028-deadline-to-phase-out-tourist-apartments' }] : []),
       ]} />
     </div>
   );
