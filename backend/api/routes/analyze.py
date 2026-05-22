@@ -289,13 +289,16 @@ async def _run_full_analysis(
         "well_above":    20,
     }.get(_comp_position) if _comp_position else None
 
+    # City-specific market benchmarks (2024 data)
+    # BCN: slower market, tighter yields; Madrid: faster market, higher yields
+    _is_madrid = (city == "madrid")
     market_data = {
-        "annual_growth_pct":      4.2,
-        "days_on_market":         55,
+        "annual_growth_pct":      15.2 if _is_madrid else 4.2,   # MAD 2024 ~15%, BCN ~4%
+        "days_on_market":         35   if _is_madrid else 55,    # MAD faster market
         "vs_fair_value_pct":      valuation_data.get("vs_listing_pct", 0),
         "comparables_position_score": _comp_position_score,
-        "rental_yield":           0.042,
-        "city_avg_yield":         0.045,
+        "rental_yield":           0.048 if _is_madrid else 0.042, # MAD avg ~4.8%, BCN ~4.2%
+        "city_avg_yield":         0.050 if _is_madrid else 0.045, # MAD higher avg yield
     }
 
     # Transaction cost data (buyer + seller) — city-aware
