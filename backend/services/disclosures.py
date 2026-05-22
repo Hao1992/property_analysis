@@ -25,26 +25,27 @@ def generate_disclosures(
     city: str | None = None,
 ) -> list[dict]:
     items: list[dict] = []
-    city_key = (city or "barcelona").lower()
+    # city=None = unsupported/unknown city — don't assume Barcelona
+    city_key = (city or "unknown").lower()
     is_barcelona = (city_key == "barcelona")
     is_madrid    = (city_key == "madrid")
 
     items += _transaction_costs(listing_price, prop_data, city=city_key)
-    items += _catastro_tax_trap(prop_data, listing_price)
+    items += _catastro_tax_trap(prop_data, listing_price, city=city_key)
     items += _airbnb_situation(airbnb_data, city=city_key)
-    items += _building_era(prop_data)
+    items += _building_era(prop_data, city=city_key)
     items += _community_debt(hidden_costs_data, prop_data)
     items += _ite_status(prop_data)
     items += _nonresident_tax(prop_data, listing_price, buyer_profile)
     items += _noise_reality(noise_data)
     items += _neighbourhood_trajectory(trajectory_data)
-    items += _cedula_habitabilidad(prop_data)
     items += _plusvalia_nonresident(prop_data, listing_price, city=city_key)
     items += _irnr_withholding_buyer(listing_price)
     items += _energy_cert_upgrade(prop_data, hidden_costs_data)
 
     # City-specific disclosures
     if is_barcelona:
+        items += _cedula_habitabilidad(prop_data)   # Catalonia-only legal requirement
         items += _rent_control_barcelona(user_answers)
         items += _bcn_zona_tensionada_info()
     if is_madrid:
@@ -567,7 +568,7 @@ def _airbnb_situation(airbnb_data: dict, city: str = "barcelona") -> list[dict]:
     }]
 
 
-def _building_era(prop_data: dict) -> list[dict]:
+def _building_era(prop_data: dict, city: str = "barcelona") -> list[dict]:
     year = prop_data.get("year_built")
     if not year:
         return []
@@ -579,11 +580,11 @@ def _building_era(prop_data: dict) -> list[dict]:
             "category": "building",
             "title": f"Built {year}: aluminosis + potential community repair cost €15,000–€40,000/unit",
             "detail": (
-                "Barcelona buildings from 1960–1975 were frequently built with aluminium cement (aluminosis), "
+                "Spanish buildings from 1960–1975 were frequently built with aluminium cement (aluminosis), "
                 "which degrades over time and weakens structural columns and slabs. "
                 "This cannot be detected visually — several buildings in this era required major rehabilitation "
                 "or demolition. When remediation is required, community-agreed structural repair costs "
-                "have ranged from €15,000 to €40,000 per unit (real cases documented in Galicia and BCN). "
+                "have ranged from €15,000 to €40,000 per unit (documented cases across Spain). "
                 "The seller is not required to disclose this proactively."
             ),
             "action": (
@@ -642,7 +643,7 @@ def _community_debt(hidden_costs_data: dict, prop_data: dict) -> list[dict]:
         "high": (
             "The building's derrama risk is rated HIGH based on age and condition. "
             "A large one-time community levy (derrama) may be imminent — "
-            "past examples in Barcelona range from €5,000 to €40,000 per unit."
+            "documented cases across Spain range from €5,000 to €40,000 per unit."
         ),
         "medium": "The building shows moderate derrama risk — a community levy is possible within the next few years.",
         "low": "Derrama risk appears low based on available data.",
@@ -822,30 +823,43 @@ def _neighbourhood_trajectory(trajectory_data: dict) -> list[dict]:
     return []
 
 
-def _catastro_tax_trap(prop_data: dict, listing_price: float | None) -> list[dict]:
+def _catastro_tax_trap(
+    prop_data: dict, listing_price: float | None, city: str = "barcelona"
+) -> list[dict]:
     """Warn when Catastro value could be higher than listing price — buyer pays ITP on the higher value."""
     cadastral_value = prop_data.get("cadastral_value")
     if not cadastral_value or not listing_price:
         return []
-    # For BCN old stock, valor catastral is typically 25-40% of market value.
-    # Using 0.35 as a central estimate gives better coverage than 0.5.
-    # Verify the exact valor de referencia at sede.catastro.gob.es before signing.
-    reference_estimate = cadastral_value / 0.35
+
+    # Cadastral-to-market ratio varies by city and vintage:
+    # BCN old stock: valor catastral typically 25-40% of market → use 0.35
+    # Madrid (central): more recent revision → typically 40-55% → use 0.50
+    is_madrid = (city == "madrid")
+    cadastral_ratio = 0.50 if is_madrid else 0.35
+    city_label = "Madrid" if is_madrid else "Barcelona"
+
+    # City-specific ITP rate for extra-tax calculation
+    itp_rate = 0.06 if is_madrid else 0.10
+
+    reference_estimate = cadastral_value / cadastral_ratio
     if listing_price >= reference_estimate * 0.95:
-        return []  # listing price is at or above reference — no trap likely
+        return []  # listing price at or above reference — no trap likely
     gap = reference_estimate - listing_price
-    extra_tax = round(gap * 0.10)
+    extra_tax = round(gap * itp_rate)
+
     return [{
         "id": "catastro_tax_trap",
         "severity": "yellow",
         "category": "costs",
-        "title": f"ITP tax may be calculated on Catastro reference value, not purchase price",
+        "title": "ITP tax may be calculated on Catastro reference value, not purchase price",
         "detail": (
             f"The Catastro valor de referencia for this property is estimated at ~€{int(reference_estimate):,} "
-            "(approximation — BCN old stock cadastral values are typically 25–40% of market value). "
+            f"(approximation — {city_label} cadastral values are typically "
+            f"{'40–55%' if is_madrid else '25–40%'}% of market value). "
             f"This is {round((reference_estimate - listing_price) / listing_price * 100)}% above the asking price of €{int(listing_price):,}. "
-            "In Spain, Hacienda can charge ITP (10% in Catalonia) on the higher of: "
-            "your actual purchase price OR the official Catastro reference value. "
+            "In Spain, Hacienda can charge ITP on the higher of: "
+            f"your actual purchase price OR the official Catastro reference value ({itp_rate*100:.0f}% in "
+            f"{'Comunidad de Madrid' if is_madrid else 'Catalonia'}). "
             f"If that applies here, you could owe an extra ~€{extra_tax:,} in tax beyond what you budgeted."
         ),
         "action": (

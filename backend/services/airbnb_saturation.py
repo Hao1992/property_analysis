@@ -86,14 +86,49 @@ def _load_csv(data: bytes) -> list[dict]:
     return rows
 
 
-async def get_airbnb_saturation(lat: float, lng: float, district: str = "Eixample") -> dict:
+# Madrid district-level Airbnb risk heuristics (2024 estimates from Inside Airbnb Madrid)
+_MADRID_DISTRICT_FALLBACK = {
+    "Centro":             {"risk": "very_high", "count_500m": 200},
+    "Salamanca":          {"risk": "high",      "count_500m": 120},
+    "Retiro":             {"risk": "medium",    "count_500m": 60},
+    "Chamberí":           {"risk": "medium",    "count_500m": 55},
+    "Chamartín":          {"risk": "low",       "count_500m": 25},
+    "Arganzuela":         {"risk": "medium",    "count_500m": 40},
+    "Latina":             {"risk": "low",       "count_500m": 20},
+    "Carabanchel":        {"risk": "low",       "count_500m": 15},
+    "Tetuán":             {"risk": "medium",    "count_500m": 45},
+    "Puente de Vallecas": {"risk": "low",       "count_500m": 10},
+    "Hortaleza":          {"risk": "low",       "count_500m": 12},
+    "Fuencarral-El Pardo":{"risk": "low",       "count_500m": 8},
+}
+
+
+async def get_airbnb_saturation(
+    lat: float, lng: float, district: str | None = None, city: str | None = None
+) -> dict:
+    city_key = (city or "barcelona").lower()
+
+    # For Madrid: BCN CSV has no useful data — use Madrid-specific district heuristics
+    if city_key != "barcelona":
+        fallback = _MADRID_DISTRICT_FALLBACK.get(
+            district or "", {"risk": "medium", "count_500m": 30}
+        )
+        return {
+            "tourist_pct_building": None,
+            "tourist_count_500m": None,
+            "tourist_count_100m": None,
+            "risk_label": fallback["risk"],
+            "data_source": "district-heuristic",
+        }
+
+    # Barcelona path: use Inside Airbnb BCN CSV
     listings = await _ensure_listings()
 
     if not listings:
         # InsideAirbnb CSV unavailable. Use district-level risk label only.
         # We intentionally do NOT show specific counts (100m / 500m) because the
         # district-level numbers are averages and would be misleading for a specific address.
-        fallback = _DISTRICT_FALLBACK.get(district, {"risk": "medium"})
+        fallback = _DISTRICT_FALLBACK.get(district or "", {"risk": "medium"})
         return {
             "tourist_pct_building": None,
             "tourist_count_500m": None,   # not available — district fallback only

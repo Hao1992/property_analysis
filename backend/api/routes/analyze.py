@@ -207,8 +207,8 @@ async def _run_full_analysis(
         catastro.get_property_data(lat, lng),
         open_data_bcn.get_safety_data(lat, lng, district),
         ine.get_census_section_from_coords(lat, lng),
-        airbnb_saturation.get_airbnb_saturation(lat, lng, district),
-        neighbourhood_trajectory.get_neighbourhood_trajectory(lat, lng, district),
+        airbnb_saturation.get_airbnb_saturation(lat, lng, district, city=city),
+        neighbourhood_trajectory.get_neighbourhood_trajectory(lat, lng, district, city=city),
     )
 
     # Step 1b: Market comparables (parallel, non-blocking — failure just omits the section)
@@ -383,14 +383,23 @@ async def analyze(req: AnalyzeRequest, request: Request):
     request_id = str(uuid.uuid4())
     _t0 = time.time()
     try:
-        data = await _run_full_analysis(
-            req.address, req.listing_price, req.buyer_profile,
-            user_answers_json, req.year_built, req.floor,
-            req.surface_m2, req.energy_cert, req.condition,
-            language=req.language,
-            has_parking_override=req.has_parking,
-            has_terrace_override=req.has_terrace,
-            has_views_override=req.has_views,
+        # 25s timeout — Railway proxy kills slow requests without CORS headers,
+        # causing browsers to report "Network Error" instead of a proper error response.
+        async with asyncio.timeout(25):
+            data = await _run_full_analysis(
+                req.address, req.listing_price, req.buyer_profile,
+                user_answers_json, req.year_built, req.floor,
+                req.surface_m2, req.energy_cert, req.condition,
+                language=req.language,
+                has_parking_override=req.has_parking,
+                has_terrace_override=req.has_terrace,
+                has_views_override=req.has_views,
+            )
+    except asyncio.TimeoutError:
+        await refund_rate_limit(ip)
+        raise HTTPException(
+            status_code=504,
+            detail="Analysis timed out — external data services are slow. Please try again in a moment.",
         )
     except Exception as exc:
         await refund_rate_limit(ip)

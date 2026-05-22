@@ -4,6 +4,7 @@ Primary signal: Barcelona open data — new business activity licences.
 API: https://opendata-ajuntament.barcelona.cat
 
 Falls back to a static district heuristic when the API is slow or unavailable.
+For non-Barcelona cities, the BCN API is skipped entirely.
 """
 from datetime import datetime, timedelta, timezone
 
@@ -27,8 +28,20 @@ _DISTRICT_TREND_FALLBACK = {
     "Sant Martí":           {"trend": "rising",    "score": 65, "new_biz": 65},
 }
 
+_NEUTRAL = {"trend": "stable", "new_businesses_12m": None, "renovation_permits_12m": None, "trend_score": None}
 
-async def get_neighbourhood_trajectory(lat: float, lng: float, district: str) -> dict:
+
+async def get_neighbourhood_trajectory(
+    lat: float, lng: float, district: str | None, city: str | None = None
+) -> dict:
+    # BCN Licences API is Barcelona-specific — skip entirely for non-BCN cities
+    if city and city != "barcelona":
+        return {**_NEUTRAL, "_unavailable": True}
+
+    # Skip API call when district is unknown (prevents malformed queries to BCN API)
+    if not district:
+        return {**_NEUTRAL}
+
     fallback = _DISTRICT_TREND_FALLBACK.get(district, {"trend": "stable", "score": 52, "new_biz": 30})
 
     try:

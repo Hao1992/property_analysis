@@ -147,10 +147,10 @@ class HiddenCostsData(BaseModel):
 
 
 class NeighbourhoodTrajectoryData(BaseModel):
-    trend: str                                 # rising | stable | declining
-    new_businesses_12m: int
-    renovation_permits_12m: int
-    trend_score: float                         # 0–100
+    trend: Optional[str] = None                # rising | stable | declining
+    new_businesses_12m: Optional[int] = None
+    renovation_permits_12m: Optional[int] = None
+    trend_score: Optional[float] = None        # 0–100
 
 
 class NarrativeData(BaseModel):
