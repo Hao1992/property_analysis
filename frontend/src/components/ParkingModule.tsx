@@ -160,7 +160,7 @@ export default function ParkingModule({ data }: Props) {
       </p>
 
       <SourceBadge className="mt-1" sources={[
-        { label: 'Area Verda', url: data.official_source_url ?? 'https://areaverda.cat/en/map', note: sourceNote },
+        ...(data.official_source_url ? [{ label: 'Area Verda', url: data.official_source_url, note: sourceNote }] : []),
         { label: 'OSM Overpass', url: 'https://overpass-api.de/', note: pk.garagesNearby(garageCount) },
       ]} />
     </div>
