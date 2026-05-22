@@ -19,6 +19,7 @@ from models.response import (
     ParkingData, GarageEntry, ParkingStreetSegment,
 )
 from services import geocoder, overpass, google_places, catastro, ine, open_data_bcn
+from services import open_data_mad
 from services import airbnb_saturation, school_quality, noise_ecosystem, neighbourhood_trajectory
 from services import ai_narrative, disclosures, fotocasa_scraper
 from services.parking import get_parking_analysis
@@ -205,7 +206,9 @@ async def _run_full_analysis(
     ) = await asyncio.gather(
         overpass.fetch_pois(lat, lng),
         catastro.get_property_data(lat, lng),
-        open_data_bcn.get_safety_data(lat, lng, district),
+        (open_data_mad.get_madrid_safety_data(lat, lng, district)
+         if city == "madrid"
+         else open_data_bcn.get_safety_data(lat, lng, district)),
         ine.get_census_section_from_coords(lat, lng),
         airbnb_saturation.get_airbnb_saturation(lat, lng, district, city=city),
         neighbourhood_trajectory.get_neighbourhood_trajectory(lat, lng, district, city=city),

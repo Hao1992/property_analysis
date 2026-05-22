@@ -23,6 +23,9 @@ export default function SafetyModule({ safety }: Props) {
 
   const hasData = safety.theft_rate_index != null
 
+  // Detect city from source metadata (falls back to BCN sources if not set)
+  const isMadrid = (safety as any)._source?.includes('Madrid') ?? false
+
   if (!hasData) {
     return (
       <div className="card p-5 space-y-4">
@@ -35,9 +38,7 @@ export default function SafetyModule({ safety }: Props) {
         </div>
         <div className="bg-stone-50 border border-stone-200 rounded-lg px-4 py-5 text-center">
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            {lang === 'zh'
-              ? '安全数据暂时仅支持巴塞罗那（来源：Open Data Barcelona）。马德里安全数据将在后续版本中添加。'
-              : 'Crime index data is currently available for Barcelona only (Open Data BCN). Madrid safety data will be added in a future update.'}
+            {lang === 'zh' ? '安全数据加载中...' : 'Safety data unavailable for this address.'}
           </p>
         </div>
       </div>
@@ -80,12 +81,15 @@ export default function SafetyModule({ safety }: Props) {
         })}
       </div>
 
-      {/* District-level data warning — prominently shown per Reddit feedback */}
+      {/* District-level data warning */}
       <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800">
         {t.sections.safety.districtWarning}
       </div>
 
-      <SourceBadge sources={[{ label: 'Open Data Barcelona — Seguretat Ciutadana', url: 'https://opendata-ajuntament.barcelona.cat/data/ca/dataset/estadistica-de-seguretat-ciutadana', note: `${safety.data_year} data` }]} />
+      <SourceBadge sources={isMadrid
+        ? [{ label: 'Policía Municipal de Madrid — Anuario Estadístico', url: 'https://datos.madrid.es/portal/site/egob/', note: `${safety.data_year} data` }]
+        : [{ label: 'Open Data Barcelona — Seguretat Ciutadana', url: 'https://opendata-ajuntament.barcelona.cat/data/ca/dataset/estadistica-de-seguretat-ciutadana', note: `${safety.data_year} data` }]
+      } />
     </div>
   )
 }
