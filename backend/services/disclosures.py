@@ -119,16 +119,19 @@ def _translate_zh(
     cadastral_value = prop_data.get("cadastral_value")
     ref_estimate = int(cadastral_value / 0.35) if cadastral_value else None
     catastro_gap = int(ref_estimate - listing_price) if (ref_estimate and listing_price and ref_estimate > listing_price) else None
-    catastro_extra_tax = int(catastro_gap * 0.10) if catastro_gap else None
+    _catastro_itp_rate = 0.06 if is_madrid else 0.10
+    catastro_extra_tax = int(catastro_gap * _catastro_itp_rate) if catastro_gap else None
+    _city_ratio_zh = "40–55%" if is_madrid else "25–40%"
+    _itp_label_zh2 = f"{'马德里ITP税率6%' if is_madrid else '加泰罗尼亚ITP税率10%'}"
     catastro_tax_detail = (
-        f"该房产的Catastro参考价估算约为 €{ref_estimate:,}（估算值，巴塞罗那老楼地籍估值通常为市场价的25–40%），"
+        f"该房产的Catastro参考价估算约为 €{ref_estimate:,}（估算值，该地区地籍估值通常为市场价的{_city_ratio_zh}），"
         + (f"高于挂牌价 €{int(listing_price):,} 约 €{catastro_gap:,}。" if catastro_gap and listing_price else "")
-        + "西班牙税务局有权按实际成交价与官方Catastro参考价中的较高者征收ITP（加泰罗尼亚税率10%）。"
+        + f"西班牙税务局有权按实际成交价与官方Catastro参考价中的较高者征收ITP（{_itp_label_zh2}）。"
         + (f"若按参考价计算，你可能需要额外缴纳约 €{catastro_extra_tax:,} 的税款。" if catastro_extra_tax else "")
         if ref_estimate is not None
         else (
             "当前公开数据未返回该房产的Catastro参考价估算。"
-            "西班牙税务局有权按实际成交价与官方Catastro参考价中的较高者征收ITP（加泰罗尼亚税率10%），"
+            f"西班牙税务局有权按实际成交价与官方Catastro参考价中的较高者征收ITP（{_itp_label_zh2}），"
             "因此仍需在签约前单独核实官方valor de referencia。"
         )
     )
@@ -189,7 +192,7 @@ def _translate_zh(
             {
                 "title": f"建于 {year} 年：铝水泥高风险 + 社区大修费可能达 €15,000–€40,000/户",
                 "detail": (
-                    "1960–1975年间的巴塞罗那建筑大量使用铝水泥（aluminosis），"
+                    "1960–1975年间西班牙大量建筑使用铝水泥（aluminosis），"
                     "该材料随时间降解并削弱结构柱和楼板，外观无法判断。"
                     "修缮时社区议定的大修摊派（derrama）实际案例中每户费用从 €15,000 到 €40,000 不等。"
                     "卖方无主动披露义务。"
@@ -336,17 +339,17 @@ def _translate_zh(
             "detail": (
                 "根据《地方财政法》第106.2条（RDL 2/2004），若卖方非西班牙税务居民，"
                 "买方成为市政增值税（Plusvalía Municipal/IIVTNU）的替代纳税人（sujeto pasivo sustituto）。"
-                "这是第一位法律责任——巴塞罗那市政府可直接向你追缴，无需先向卖方追究。"
+                f"这是第一位法律责任——{'马德里市政府' if is_madrid else '市政府'}可直接向你追缴，无需先向卖方追究。"
                 + (
-                    f"基于地籍估值（€{int(cadastral):,}）估算：土地部分（约65%） × 年限系数 × 30%（巴塞罗那税率）≈ €{plusvalia_est:,}。"
+                    f"基于地籍估值（€{int(cadastral):,}）估算：土地部分（约65%） × 年限系数 × {'29%（马德里税率）' if is_madrid else '30%（巴塞罗那税率）'}≈ €{plusvalia_est:,}。"
                     if plusvalia_est and cadastral else ""
                 ) +
-                "实际金额取决于卖方持有年限及地籍土地价值。截止时间：签约后30个工作日内，通过ORGT提交Modelo 081。"
+                f"实际金额取决于卖方持有年限及地籍土地价值。截止时间：签约后30个工作日内，通过{'Ayuntamiento de Madrid' if is_madrid else 'ORGT'}提交Modelo 081。"
             ),
             "action": (
                 "签约前：（1）要求卖方出示西班牙税务居民证明（Certificado de residencia fiscal en España）；"
                 + (f"（2）在购房价格中预留约 €{plusvalia_est:,} 用于缴纳此税；" if plusvalia_est else "（2）协商在房价中保留估算金额；")
-                + "（3）签约后30个工作日内通过ORGT申报缴纳。"
+                + f"（3）签约后30个工作日内通过{'Ayuntamiento de Madrid' if is_madrid else 'ORGT'}申报缴纳。"
             ),
         },
         "irnr_withholding_buyer": {
