@@ -13,7 +13,7 @@ from api.routes.commute import router as commute_router
 
 app = FastAPI(
     title="Property Analyzer API",
-    description="Barcelona property analysis — POIs, safety, valuation, composite score",
+    description="Barcelona & Madrid property analysis — POIs, safety, valuation, composite score",
     version="0.1.0",
 )
 
