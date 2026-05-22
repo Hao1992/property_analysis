@@ -35,7 +35,7 @@ function AddressField({
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
       try {
-        const q = encodeURIComponent(value + (value.toLowerCase().includes('barcelona') ? '' : ', Barcelona'))
+        const q = encodeURIComponent(value) // countrycodes=es already limits to Spain
         const res = await fetch(
           `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=5&addressdetails=1&countrycodes=es`,
           { headers: { 'Accept-Language': 'en' } }
@@ -181,7 +181,7 @@ export default function Compare() {
               index={i}
               value={addr}
               onChange={v => setAddr(i, v)}
-              placeholder={lang === 'zh' ? `例如：Carrer de Mallorca 401, Barcelona` : `Property ${labels[i]} address`}
+              placeholder={lang === 'zh' ? `例如：Carrer de Mallorca 401, Barcelona 或 Calle Serrano 50, Madrid` : `Property ${labels[i]} address`}
             />
             <input
               type="number"
