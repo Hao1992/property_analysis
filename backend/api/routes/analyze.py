@@ -383,9 +383,10 @@ async def analyze(req: AnalyzeRequest, request: Request):
     request_id = str(uuid.uuid4())
     _t0 = time.time()
     try:
-        # 25s timeout — Railway proxy kills slow requests without CORS headers,
+        # 28s timeout — Railway proxy kills slow requests (>30s) without CORS headers,
         # causing browsers to report "Network Error" instead of a proper error response.
-        async with asyncio.timeout(25):
+        # 28s gives Overpass up to ~22s total (3 endpoints × 6s + fast fails) with 6s buffer.
+        async with asyncio.timeout(28):
             data = await _run_full_analysis(
                 req.address, req.listing_price, req.buyer_profile,
                 user_answers_json, req.year_built, req.floor,
