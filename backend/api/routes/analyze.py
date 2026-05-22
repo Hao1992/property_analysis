@@ -225,6 +225,7 @@ async def _run_full_analysis(
             district=district,
             surface_m2=surface_for_comp,
             listing_price=listing_price,
+            city=city,
         )
     except Exception:
         comparables_data = None

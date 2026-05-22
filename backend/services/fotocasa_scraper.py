@@ -52,7 +52,33 @@ DISTRICT_STATIC: dict[str, dict] = {
     "Nou Barris":            {"p25": 2100, "median": 3300, "p75": 4600},
     "Sant Andreu":           {"p25": 2600, "median": 3900, "p75": 5200},
 }
-_DEFAULT_RANGE = {"p25": 3500, "median": 5000, "p75": 7500}
+_DEFAULT_RANGE = {"p25": 3500, "median": 5000, "p75": 7500}  # BCN fallback only
+
+# Madrid district static price ranges (€/m², 2024-2025)
+# Source: Idealista/Fotocasa annual price indices + JLL Madrid Residential 2024
+_MADRID_DISTRICT_STATIC: dict[str, dict] = {
+    "Salamanca":          {"p25": 6800, "median": 8700, "p75": 12000},
+    "Retiro":             {"p25": 5500, "median": 7200, "p75": 10000},
+    "Chamberí":           {"p25": 5400, "median": 6800, "p75": 9500},
+    "Chamartín":          {"p25": 5200, "median": 6700, "p75": 9200},
+    "Moncloa-Aravaca":    {"p25": 4800, "median": 6200, "p75": 8800},
+    "Centro":             {"p25": 4800, "median": 6500, "p75": 9500},
+    "Tetuán":             {"p25": 3900, "median": 4900, "p75": 6800},
+    "Arganzuela":         {"p25": 3800, "median": 4900, "p75": 6600},
+    "Fuencarral-El Pardo":{"p25": 3400, "median": 4300, "p75": 6000},
+    "Latina":             {"p25": 2800, "median": 3400, "p75": 4800},
+    "Carabanchel":        {"p25": 2400, "median": 3000, "p75": 4200},
+    "Usera":              {"p25": 2400, "median": 3000, "p75": 4000},
+    "Puente de Vallecas": {"p25": 2200, "median": 2800, "p75": 3800},
+    "Moratalaz":          {"p25": 2700, "median": 3300, "p75": 4600},
+    "Ciudad Lineal":      {"p25": 3000, "median": 3800, "p75": 5400},
+    "Hortaleza":          {"p25": 3200, "median": 4000, "p75": 5800},
+    "Vicálvaro":          {"p25": 2500, "median": 3100, "p75": 4200},
+    "San Blas-Canillejas":{"p25": 2600, "median": 3200, "p75": 4500},
+    "Barajas":            {"p25": 3000, "median": 3800, "p75": 5200},
+    "Villaverde":         {"p25": 2000, "median": 2600, "p75": 3500},
+}
+_MADRID_DEFAULT_RANGE = {"p25": 3000, "median": 4500, "p75": 6500}  # Madrid city-wide fallback
 
 _HEADERS = {
     "User-Agent": (
@@ -101,18 +127,25 @@ async def get_market_comparables(
     district: str,
     surface_m2: Optional[float],
     listing_price: Optional[float] = None,
+    city: Optional[str] = None,
 ) -> dict:
     """
     Returns market context for a property: median, P25, P75, comparable listings.
-    Tries Fotocasa live data first; falls back to calibrated static table.
+    Tries Fotocasa live data first (BCN only); falls back to calibrated static table.
     """
     size = surface_m2 or 90.0
     min_size = max(20, round(size * 0.70 / 10) * 10)
     max_size = round(size * 1.40 / 10) * 10
     size_range = f"{min_size}–{max_size} m²"
 
-    slug = DISTRICT_SLUGS.get(district)
-    static = DISTRICT_STATIC.get(district, _DEFAULT_RANGE)
+    # Madrid: use Madrid-specific static data (no Fotocasa live scraping for Madrid yet)
+    is_madrid = (city == "madrid") or (district in _MADRID_DISTRICT_STATIC and city != "barcelona")
+    if is_madrid:
+        static = _MADRID_DISTRICT_STATIC.get(district, _MADRID_DEFAULT_RANGE)
+        slug = None  # No Madrid live scraping
+    else:
+        slug = DISTRICT_SLUGS.get(district)
+        static = DISTRICT_STATIC.get(district, _DEFAULT_RANGE)
     cookies = os.getenv("FOTOCASA_COOKIES", "")
 
     listings: list[dict] = []
@@ -161,7 +194,7 @@ async def get_market_comparables(
         median_ppm2 = static["median"]
         p25 = static["p25"]
         p75 = static["p75"]
-        source = "district statistics"
+        source = "Madrid district statistics" if is_madrid else "district statistics"
         count = None
         sample = []
 
