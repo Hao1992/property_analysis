@@ -186,6 +186,11 @@ export default function App() {
             <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>{t.footer.brand}</p>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t.footer.data}</p>
             <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{t.footer.disclaimer}</p>
+            <div className="mt-4 flex items-center justify-center">
+              <a href="https://fazier.com" target="_blank" rel="noopener noreferrer">
+                <img src="https://fazier.com/api/v1//public/badges/launch_badges.svg?badge_type=launched&theme=light" alt="Launched on Fazier" height="36" />
+              </a>
+            </div>
           </div>
         </footer>
       )}
