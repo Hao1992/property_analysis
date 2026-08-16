@@ -1,5 +1,6 @@
 import asyncio
 import os
+import secrets
 import time
 import uuid
 
@@ -710,7 +711,7 @@ async def compare(req: CompareRequest):
 @router.get("/admin/analytics", response_class=HTMLResponse)
 async def get_analytics_dashboard(token: str = ""):
     expected = os.getenv("ANALYTICS_TOKEN", "")
-    if not expected or token != expected:
+    if not expected or not secrets.compare_digest(token, expected):
         raise HTTPException(status_code=403, detail="Forbidden")
     stats = analytics.get_stats()
     return HTMLResponse(content=dashboard_util.render(stats, token=token))
@@ -719,7 +720,7 @@ async def get_analytics_dashboard(token: str = ""):
 @router.get("/admin/analytics/json")
 async def get_analytics_json(token: str = ""):
     expected = os.getenv("ANALYTICS_TOKEN", "")
-    if not expected or token != expected:
+    if not expected or not secrets.compare_digest(token, expected):
         raise HTTPException(status_code=403, detail="Forbidden")
     return {"summary": analytics.get_summary(), "entries": analytics.get_all()}
 

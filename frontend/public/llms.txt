@@ -61,4 +61,4 @@ Response: Full JSON analysis report
 
 ## Contact
 
-Creator: Hao Sun — haosun92@gmail.com
+Creator: Hao Sun — hao.superai@gmail.com
