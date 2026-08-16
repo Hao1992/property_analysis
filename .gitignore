@@ -30,5 +30,7 @@ poetry.lock
 scheduled_tasks.lock
 .claude/
 
-# Telegram temp files
+# Telegram temp files / dev notification scripts (never commit — contain bot tokens)
 tg_status.txt
+tg.py
+tg_loop.py
