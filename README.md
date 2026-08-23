@@ -6,7 +6,18 @@ What you're actually buying into, not just the listing.
 
 ## Project status
 
-This started as an attempt to build a viable product around Spanish property due-diligence. It didn't find a path to revenue, so it's no longer actively developed as a commercial project — but the engineering behind it (city-aware tax/legal logic, an 8-dimension scoring engine, a documented incident-driven review protocol) is solid and may be useful to others. Open-sourced under MIT so anyone can learn from it, fork it, or build on it. Issues and PRs are welcome, but expect best-effort, not active maintenance.
+Built end-to-end — Barcelona, Madrid, and Valencia coverage, city-aware tax/legal logic, an 8-dimension scoring engine, a documented incident-driven review protocol — then open-sourced under MIT once the build was complete, so the engineering could be useful (and visible) beyond a single hosted app. Issues and PRs are welcome.
+
+**Read more:**
+- [I shipped a property analysis tool 4 days ago — what happened next and what I learned building with AI](https://medium.com/@haosun92/i-shipped-a-property-analysis-tool-4-days-ago-457ee52f98c3) (Medium)
+- [Launch post](https://www.linkedin.com/posts/hao-sun-6a64a713b_i-built-a-free-tool-that-tells-you-what-ugcPost-7462395373609832448-9qji/) (LinkedIn)
+
+## Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/homepage.png" width="45%" alt="Beyond Price homepage — address input form" />
+  <img src="docs/screenshots/report-top.png" width="45%" alt="Beyond Price report — AI verdict, composite score, disclosures" />
+</p>
 
 ## What it does
 
