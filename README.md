@@ -9,7 +9,6 @@ What you're actually buying into, not just the listing.
 Built end-to-end — Barcelona, Madrid, and Valencia coverage, city-aware tax/legal logic, an 8-dimension scoring engine, a documented incident-driven review protocol — then open-sourced under MIT once the build was complete, so the engineering could be useful (and visible) beyond a single hosted app. Issues and PRs are welcome.
 
 **Read more:**
-- [I shipped a property analysis tool 4 days ago — what happened next and what I learned building with AI](https://medium.com/@haosun92/i-shipped-a-property-analysis-tool-4-days-ago-457ee52f98c3) (Medium)
 - [Launch post](https://www.linkedin.com/posts/hao-sun-6a64a713b_i-built-a-free-tool-that-tells-you-what-ugcPost-7462395373609832448-9qji/) (LinkedIn)
 
 ## Screenshots
