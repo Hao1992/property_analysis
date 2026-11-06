@@ -61,4 +61,5 @@ Response: Full JSON analysis report
 
 ## Contact
 
-Creator: Hao Sun — hao.superai@gmail.com
+Creator: Hao Sun
+Issues and questions: https://github.com/Hao1992/property_analysis/issues
